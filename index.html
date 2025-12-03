@@ -16,7 +16,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 5.0 (CRITICAL FIXES)
+// BATTLESHIP ESL - VERSION 6.0 (ONLINE SETUP FIX)
 // ============================================
 
 // Grammar Questions Database
@@ -167,7 +167,8 @@ function BattleshipESL() {
   // FIXED: Explicit setup completion tracking
   const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
   const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
-  const [transitionForPlayer, setTransitionForPlayer] = useState(null); // FIXED: Track which player transition is for
+  const [transitionForPlayer, setTransitionForPlayer] = useState(null);
+  const [opponentSetupReceived, setOpponentSetupReceived] = useState(false); // FIXED v6: Track if opponent's setup data received
 
   // Setup state
   const [setupPlayer, setSetupPlayer] = useState(1);
@@ -205,10 +206,25 @@ function BattleshipESL() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
+  const mySetupCompleteRef = useRef(false); // FIXED v6: Track my setup completion in ref
+  const waitingRef = useRef(false); // FIXED v6: Track waiting state in ref
 
   useEffect(() => {
     gameModeRef.current = gameMode;
   }, [gameMode]);
+
+  // FIXED v6: Sync setup completion refs
+  useEffect(() => {
+    if (gameMode === 'online-host') {
+      mySetupCompleteRef.current = player1SetupComplete;
+    } else if (gameMode === 'online-joiner') {
+      mySetupCompleteRef.current = player2SetupComplete;
+    }
+  }, [player1SetupComplete, player2SetupComplete, gameMode]);
+
+  useEffect(() => {
+    waitingRef.current = waitingForOpponent;
+  }, [waitingForOpponent]);
 
   // Copy to clipboard function
   const copyToClipboard = async (text) => {
@@ -285,15 +301,22 @@ function BattleshipESL() {
     
     switch (data.type) {
       case 'setup-complete':
+        // FIXED v6: Store opponent's data including gifts
         if (currentGameMode === 'online-host') {
-          setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships }));
+          setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
           setPlayer2SetupComplete(true);
         } else {
-          setPlayer1(prev => ({ ...prev, grid: data.grid, ships: data.ships }));
+          setPlayer1(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
           setPlayer1SetupComplete(true);
         }
-        setWaitingForOpponent(false);
-        setGamePhase('battle');
+        setOpponentSetupReceived(true);
+        
+        // FIXED v6: Only go to battle if MY setup is also done (was waiting)
+        if (waitingRef.current) {
+          setWaitingForOpponent(false);
+          setGamePhase('battle');
+        }
+        // Otherwise stay in setup phase until I finish
         break;
         
       case 'shot':
@@ -500,14 +523,26 @@ function BattleshipESL() {
       if (gameMode === 'online-host') {
         setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
         setPlayer1SetupComplete(true);
-        sendMessage({ type: 'setup-complete', grid, ships });
-        setWaitingForOpponent(true);
+        // FIXED v6: Include gifts in message
+        sendMessage({ type: 'setup-complete', grid, ships, gifts });
+        // FIXED v6: If opponent already sent their setup, go to battle
+        if (opponentSetupReceived) {
+          setGamePhase('battle');
+        } else {
+          setWaitingForOpponent(true);
+        }
       } else {
         setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
         setPlayer2SetupComplete(true);
-        sendMessage({ type: 'setup-complete', grid, ships });
+        // FIXED v6: Include gifts in message
+        sendMessage({ type: 'setup-complete', grid, ships, gifts });
         setIsMyTurn(false);
-        setWaitingForOpponent(true);
+        // FIXED v6: If opponent already sent their setup, go to battle
+        if (opponentSetupReceived) {
+          setGamePhase('battle');
+        } else {
+          setWaitingForOpponent(true);
+        }
       }
     }
   };
@@ -973,6 +1008,30 @@ function BattleshipESL() {
     .peer-input:focus {
       outline: none;
       border-color: #00d9ff;
+    }
+    .paste-input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .paste-input-wrapper .peer-input {
+      flex: 1;
+      margin: 0;
+    }
+    .paste-btn {
+      padding: 10px 15px;
+      border: 2px solid #00d9ff;
+      border-radius: 8px;
+      background: rgba(0, 217, 255, 0.2);
+      color: #00d9ff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+    .paste-btn:hover {
+      background: #00d9ff;
+      color: #0f172a;
     }
     .status-indicator {
       display: flex;
@@ -1582,7 +1641,29 @@ function BattleshipESL() {
                 {gameMode === 'online-join' && (
                   <>
                     <div>Enter host's game code:</div>
-                    <input className="peer-input" type="text" placeholder="Paste game code here" value={remotePeerId} onChange={(e) => setRemotePeerId(e.target.value)} />
+                    <div className="paste-input-wrapper">
+                      <input 
+                        className="peer-input" 
+                        type="text" 
+                        placeholder="Paste game code here" 
+                        value={remotePeerId} 
+                        onChange={(e) => setRemotePeerId(e.target.value)} 
+                      />
+                      <button 
+                        className="paste-btn" 
+                        onClick={async () => {
+                          try {
+                            const text = await navigator.clipboard.readText();
+                            setRemotePeerId(text.trim());
+                          } catch (err) {
+                            console.log('Paste failed:', err);
+                          }
+                        }}
+                        title="Click to paste from clipboard"
+                      >
+                        📋 Paste
+                      </button>
+                    </div>
                     <button className="menu-btn primary" onClick={() => connectToPeer(remotePeerId)} disabled={!remotePeerId || !peer}>
                       Connect
                     </button>
