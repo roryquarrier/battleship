@@ -16,7 +16,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 7.0 (HIT DETECTION + SHARED QUESTION)
+// BATTLESHIP ESL - VERSION 8.0 (UI OVERHAUL + RETRY QUESTIONS)
 // ============================================
 
 // Grammar Questions Database
@@ -368,6 +368,20 @@ function BattleshipESL() {
           }
         }, 1500);
         break;
+      
+      // FIXED v8: Shooter got wrong answer, will retry
+      case 'question-retry':
+        // Just reset selection state, new question coming
+        setSelectedAnswer(null);
+        setAnswerResult(null);
+        break;
+      
+      // FIXED v8: New question for retry attempt
+      case 'new-question':
+        setCurrentQuestion(data.question);
+        setSelectedAnswer(null);
+        setAnswerResult(null);
+        break;
         
       case 'game-over':
         setWinner(data.winner);
@@ -396,6 +410,9 @@ function BattleshipESL() {
     let shipsRemaining = myPlayer.shipsRemaining;
     let sunkShipName = null;
     const myShips = myPlayer.ships.map(s => ({...s, cells: [...s.cells]}));
+    // FIXED v8: Handle gifts in online mode
+    const myGifts = [...(myPlayer.gifts || [])];
+    let collectedGift = null;
 
     const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]);
     
@@ -403,6 +420,14 @@ function BattleshipESL() {
       if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
         if (newReceived[r][c] === null) {
           const cell = myGrid[r][c];
+          
+          // FIXED v8: Check for gift at this location
+          const giftIndex = myGifts.findIndex(g => g.row === r && g.col === c);
+          if (giftIndex !== -1 && !collectedGift) {
+            collectedGift = myGifts[giftIndex];
+            myGifts.splice(giftIndex, 1);
+          }
+          
           if (cell && cell.ship !== undefined) {
             newReceived[r][c] = 'hit';
             gotHit = true;
@@ -426,11 +451,13 @@ function BattleshipESL() {
     setIncomingShot({ results, gotHit, sunkShip: sunkShipName });
     setShowIncomingAnimation(true);
 
+    // FIXED v8: Update player state including gifts
     setMyPlayer(prev => ({
       ...prev,
       received: newReceived,
       shipsRemaining,
-      ships: myShips
+      ships: myShips,
+      gifts: myGifts
     }));
 
     // FIXED v7: Generate question HERE and send to shooter
@@ -443,7 +470,8 @@ function BattleshipESL() {
       sunkShip: sunkShipName,
       shipsRemaining,
       gameOver: shipsRemaining === 0,
-      question // FIXED v7: Send same question to shooter
+      question,
+      collectedGift // FIXED v8: Send gift info to shooter
     });
 
     setTimeout(() => {
@@ -474,7 +502,12 @@ function BattleshipESL() {
       data.results.forEach(({ row, col, result }) => {
         newTracking[row][col] = result;
       });
-      return { ...prev, tracking: newTracking };
+      // FIXED v8: Add weapon from collected gift
+      const newWeapons = { ...prev.weapons };
+      if (data.collectedGift) {
+        newWeapons[data.collectedGift.weapon] = (newWeapons[data.collectedGift.weapon] || 0) + 1;
+      }
+      return { ...prev, tracking: newTracking, weapons: newWeapons };
     });
 
     if (data.sunkShip) setSunkShip(data.sunkShip);
@@ -744,7 +777,7 @@ function BattleshipESL() {
     }
   };
 
-  // Question Handling
+  // Question Handling - FIXED v8: Retry on wrong answers
   const handleAnswer = (index) => {
     // Only the shooter can answer (not watching)
     if (isWatchingQuestion) return;
@@ -759,36 +792,52 @@ function BattleshipESL() {
     }
 
     setTimeout(() => {
-      if (gameMode !== 'offline') {
-        // FIXED v7: Send result to defender
-        sendMessage({ type: 'question-answered', correct, gotHit: extraTurn });
-        
-        if (correct && extraTurn) {
-          setIsMyTurn(true);
-          setGamePhase('battle');
+      if (correct) {
+        // Correct answer - proceed normally
+        if (gameMode !== 'offline') {
+          sendMessage({ type: 'question-answered', correct: true, gotHit: extraTurn });
+          
+          if (extraTurn) {
+            setIsMyTurn(true);
+            setGamePhase('battle');
+          } else {
+            setIsMyTurn(false);
+            setGamePhase('battle'); // FIXED v8: No waiting overlay
+          }
         } else {
-          setIsMyTurn(false);
-          setWaitingForOpponent(true);
-          setGamePhase('battle');
+          if (extraTurn) {
+            setGamePhase('battle');
+          } else {
+            const nextPlayer = currentPlayer === 1 ? 2 : 1;
+            setTransitionForPlayer(nextPlayer);
+            setCurrentPlayer(nextPlayer);
+            setGamePhase('transition');
+          }
         }
+        // Clear question state
+        setCurrentQuestion(null);
+        setSelectedAnswer(null);
+        setAnswerResult(null);
+        setShotResults([]);
+        setExtraTurn(false);
+        setSunkShip(null);
+        setIsWatchingQuestion(false);
       } else {
-        if (correct && extraTurn) {
-          setGamePhase('battle');
-        } else {
-          // FIXED: Set transition info BEFORE changing player to avoid async state issue
-          const nextPlayer = currentPlayer === 1 ? 2 : 1;
-          setTransitionForPlayer(nextPlayer);
-          setCurrentPlayer(nextPlayer);
-          setGamePhase('transition');
+        // FIXED v8: Wrong answer - give a new question, must retry
+        if (gameMode !== 'offline') {
+          // Send retry notification to defender
+          sendMessage({ type: 'question-retry' });
+        }
+        // Get new question and reset for retry
+        const newQuestion = getRandomQuestion(difficulty);
+        setCurrentQuestion(newQuestion);
+        setSelectedAnswer(null);
+        setAnswerResult(null);
+        // Send new question to defender so they can watch
+        if (gameMode !== 'offline') {
+          sendMessage({ type: 'new-question', question: newQuestion });
         }
       }
-      setCurrentQuestion(null);
-      setSelectedAnswer(null);
-      setAnswerResult(null);
-      setShotResults([]);
-      setExtraTurn(false);
-      setSunkShip(null);
-      setIsWatchingQuestion(false);
     }, 1500);
   };
 
@@ -846,12 +895,17 @@ function BattleshipESL() {
       }
       if (gift && !hit) content = '🎁';
     } else {
+      // Enemy grid - FIXED v8: Show gifts as clickable targets!
       if (hit === 'hit') {
         className += ' hit';
         content = '💥';
       } else if (hit === 'miss') {
         className += ' miss';
         content = '💨';
+      } else if (gift) {
+        // FIXED v8: Show gift boxes on enemy grid - shoot them to collect!
+        className += ' enemy gift-cell';
+        content = '🎁';
       } else {
         className += ' enemy';
       }
@@ -859,7 +913,8 @@ function BattleshipESL() {
 
     const handleClick = () => {
       if (isSetup) placeShip(row, col);
-      else if (!isOwnGrid && hit === null && gamePhase === 'battle') fireWeapon(row, col);
+      // FIXED v8: Only allow firing when it's your turn
+      else if (!isOwnGrid && hit === null && gamePhase === 'battle' && (gameMode === 'offline' || isMyTurn)) fireWeapon(row, col);
     };
 
     return (
@@ -1228,6 +1283,19 @@ function BattleshipESL() {
     .cell.miss {
       background: rgba(100, 100, 100, 0.4);
     }
+    .cell.gift-cell {
+      background: rgba(255, 200, 0, 0.3);
+      border: 2px solid #fbbf24;
+      animation: giftPulse 2s ease-in-out infinite;
+    }
+    .cell.gift-cell:hover {
+      background: rgba(255, 200, 0, 0.5);
+      transform: scale(1.1);
+    }
+    @keyframes giftPulse {
+      0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.5); }
+      50% { box-shadow: 0 0 15px rgba(255, 200, 0, 0.8); }
+    }
     .hit-marker {
       font-size: 1rem;
     }
@@ -1260,33 +1328,57 @@ function BattleshipESL() {
       100% { transform: scale(1); }
     }
     
-    /* Battle Styles */
+    /* Battle Styles - FIXED v8: Responsive layout */
     .battle-container {
-      max-width: 900px;
+      width: 100%;
+      max-width: 1200px;
       margin: 0 auto;
+      padding: 0 10px;
+      box-sizing: border-box;
     }
     .battle-header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
     .turn-indicator {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       font-weight: bold;
-      color: #00d9ff;
+      color: #00ff88;
+      padding: 10px 20px;
+      background: rgba(0, 255, 136, 0.15);
+      border: 2px solid #00ff88;
+      border-radius: 10px;
+      display: inline-block;
+      transition: all 0.3s;
+    }
+    .turn-indicator.waiting {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.15);
+      border-color: #fbbf24;
+      animation: waitingPulse 2s ease-in-out infinite;
+    }
+    @keyframes waitingPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.98); }
     }
     .grids-container {
       display: flex;
       justify-content: center;
-      gap: 40px;
+      align-items: flex-start;
+      gap: 30px;
       flex-wrap: wrap;
     }
     .grid-section {
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .grid-title {
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-      color: #8892b0;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: #00d9ff;
+      font-weight: bold;
     }
     .ships-status {
       display: flex;
@@ -1294,45 +1386,48 @@ function BattleshipESL() {
       gap: 5px;
       justify-content: center;
       margin-top: 10px;
-      max-width: 370px;
+      max-width: 100%;
     }
     .ship-status {
       padding: 4px 8px;
       background: rgba(0, 150, 100, 0.3);
       border-radius: 4px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
     }
     .ship-status.sunk {
       background: rgba(200, 50, 50, 0.5);
       text-decoration: line-through;
     }
     .weapons-panel {
-      margin-top: 30px;
+      margin-top: 20px;
       text-align: center;
+      width: 100%;
     }
     .weapons-title {
-      font-size: 1.2rem;
-      margin-bottom: 15px;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
       color: #00d9ff;
     }
     .weapons-grid {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
+      max-width: 500px;
+      margin: 0 auto;
     }
     .weapon-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 10px 15px;
+      padding: 8px 12px;
       border: 2px solid #334155;
       background: rgba(0, 0, 0, 0.3);
       color: white;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
-      min-width: 100px;
+      min-width: 70px;
     }
     .weapon-btn:hover:not(:disabled) {
       border-color: #00d9ff;
@@ -1348,7 +1443,7 @@ function BattleshipESL() {
       cursor: not-allowed;
     }
     .weapon-icon {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       margin-bottom: 5px;
     }
     .weapon-name {
@@ -1626,26 +1721,161 @@ function BattleshipESL() {
       margin-top: 10px;
     }
     
-    /* Responsive */
+    /* Responsive - FIXED v8: Comprehensive breakpoints */
+    
+    /* Large tablets and small desktops */
+    @media (max-width: 900px) {
+      .grids-container {
+        gap: 20px;
+      }
+      .grid {
+        grid-template-columns: repeat(10, 32px);
+      }
+      .cell {
+        width: 32px;
+        height: 32px;
+      }
+      .corner { width: 26px; height: 26px; }
+      .label { width: 32px; height: 26px; font-size: 0.75rem; }
+      .grid-labels-side .label { width: 26px; height: 32px; }
+    }
+    
+    /* Tablets */
     @media (max-width: 768px) {
       .title {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+      }
+      .header {
+        padding: 10px 0;
+      }
+      .grids-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+      }
+      .grid {
+        grid-template-columns: repeat(10, 30px);
+      }
+      .cell {
+        width: 30px;
+        height: 30px;
+        font-size: 0.85rem;
+      }
+      .corner { width: 24px; height: 24px; }
+      .label { width: 30px; height: 24px; font-size: 0.7rem; }
+      .grid-labels-side .label { width: 24px; height: 30px; }
+      .turn-indicator {
+        font-size: 1.1rem;
+        padding: 8px 15px;
+      }
+      .weapons-grid {
+        gap: 6px;
+      }
+      .weapon-btn {
+        min-width: 60px;
+        padding: 6px 10px;
+      }
+      .weapon-icon { font-size: 1.1rem; }
+      .weapon-name { font-size: 0.65rem; }
+      .weapon-count { font-size: 0.6rem; }
+    }
+    
+    /* Large phones (landscape or larger phones) */
+    @media (max-width: 600px) {
+      .title {
+        font-size: 1.2rem;
       }
       .grid {
         grid-template-columns: repeat(10, 28px);
+        padding: 3px;
+        gap: 1px;
       }
       .cell {
         width: 28px;
         height: 28px;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+        border-radius: 3px;
       }
-      .label {
-        width: 28px;
+      .corner { width: 22px; height: 22px; }
+      .label { width: 28px; height: 22px; font-size: 0.65rem; }
+      .grid-labels-side .label { width: 22px; height: 28px; }
+      .grid-title {
+        font-size: 0.95rem;
+      }
+      .ships-status {
+        gap: 3px;
+      }
+      .ship-status {
+        padding: 3px 6px;
+        font-size: 0.6rem;
+      }
+    }
+    
+    /* Small phones (portrait) */
+    @media (max-width: 400px) {
+      .game-container {
+        padding: 8px;
+      }
+      .title {
+        font-size: 1.1rem;
+      }
+      .header {
+        padding: 5px 0;
+      }
+      .grid {
+        grid-template-columns: repeat(10, 26px);
+        padding: 2px;
+        gap: 1px;
+      }
+      .cell {
+        width: 26px;
+        height: 26px;
+        font-size: 0.75rem;
+        border-radius: 2px;
+      }
+      .corner { width: 20px; height: 20px; }
+      .label { width: 26px; height: 20px; font-size: 0.6rem; }
+      .grid-labels-side .label { width: 20px; height: 26px; }
+      .turn-indicator {
+        font-size: 0.95rem;
+        padding: 6px 12px;
+      }
+      .weapons-panel {
+        margin-top: 15px;
+      }
+      .weapons-title {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
+      .weapons-grid {
+        gap: 4px;
+        max-width: 100%;
+      }
+      .weapon-btn {
+        min-width: 55px;
+        padding: 5px 8px;
+      }
+      .weapon-icon { font-size: 1rem; }
+      .weapon-name { font-size: 0.55rem; }
+      .weapon-count { font-size: 0.55rem; }
+    }
+    
+    /* Very small phones */
+    @media (max-width: 360px) {
+      .grid {
+        grid-template-columns: repeat(10, 24px);
+      }
+      .cell {
+        width: 24px;
+        height: 24px;
         font-size: 0.7rem;
       }
-      .grids-container {
-        gap: 20px;
-      }
+      .corner { width: 18px; height: 18px; }
+      .label { width: 24px; height: 18px; font-size: 0.55rem; }
+      .grid-labels-side .label { width: 18px; height: 24px; }
     }
   `;
 
@@ -1774,7 +2004,12 @@ function BattleshipESL() {
       {gamePhase === 'battle' && (
         <div className="battle-container">
           <div className="battle-header">
-            <div className="turn-indicator">{gameMode === 'offline' ? `Player ${currentPlayer}'s Turn` : (isMyTurn ? 'Your Turn' : "Opponent's Turn")}</div>
+            {/* FIXED v8: Show turn status inline, no overlay */}
+            <div className={`turn-indicator ${!isMyTurn && gameMode !== 'offline' ? 'waiting' : ''}`}>
+              {gameMode === 'offline' 
+                ? `Player ${currentPlayer}'s Turn` 
+                : (isMyTurn ? '🎯 Your Turn - Select a Target!' : '⏳ Opponent\'s Turn - Watch the Boards')}
+            </div>
           </div>
           <div className="grids-container">
             <div className="grid-section">
@@ -1809,7 +2044,7 @@ function BattleshipESL() {
                 const playerWeapons = gameMode === 'offline' ? (currentPlayer === 1 ? player1.weapons : player2.weapons) : (gameMode === 'online-host' ? player1.weapons : player2.weapons);
                 const count = playerWeapons[key];
                 return (
-                  <button key={key} className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} onClick={() => setSelectedWeapon(key)} disabled={key !== 'simple' && count <= 0}>
+                  <button key={key} className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} onClick={() => setSelectedWeapon(key)} disabled={key !== 'simple' && count <= 0 || (!isMyTurn && gameMode !== 'offline')}>
                     <span className="weapon-icon">{weapon.icon}</span>
                     <span className="weapon-name">{weapon.name}</span>
                     <span className="weapon-count">{key === 'simple' ? '∞' : count}</span>
@@ -1902,15 +2137,6 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* WAITING OVERLAY */}
-      {waitingForOpponent && !showIncomingAnimation && (
-        <div className="waiting-overlay">
-          <div className="waiting-content">
-            <div className="waiting-spinner"></div>
-            <div>Waiting for opponent...</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
