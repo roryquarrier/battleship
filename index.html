@@ -16,7 +16,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 3.0 (FULLY FIXED)
+// BATTLESHIP ESL - VERSION 4.0 (SETUP FLOW FIXED)
 // ============================================
 
 // Grammar Questions Database
@@ -143,12 +143,12 @@ function BattleshipESL() {
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [winner, setWinner] = useState(null);
 
-  // FIXED: Separated tracking (where I shot) from received (where I was hit)
+  // Player states with separated tracking/received
   const [player1, setPlayer1] = useState({
     grid: createEmptyGrid(),
     ships: [],
-    tracking: createEmptyGrid(),  // Where player1 has shot at player2
-    received: createEmptyGrid(),   // Where player1 has been hit by player2
+    tracking: createEmptyGrid(),
+    received: createEmptyGrid(),
     weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 },
     gifts: [],
     shipsRemaining: 5
@@ -157,12 +157,16 @@ function BattleshipESL() {
   const [player2, setPlayer2] = useState({
     grid: createEmptyGrid(),
     ships: [],
-    tracking: createEmptyGrid(),  // Where player2 has shot at player1
-    received: createEmptyGrid(),   // Where player2 has been hit by player1
+    tracking: createEmptyGrid(),
+    received: createEmptyGrid(),
     weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 },
     gifts: [],
     shipsRemaining: 5
   });
+
+  // FIXED: Explicit setup completion tracking
+  const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
+  const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
 
   // Setup state
   const [setupPlayer, setSetupPlayer] = useState(1);
@@ -192,7 +196,7 @@ function BattleshipESL() {
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
-  // NEW: Incoming shot animation state
+  // Incoming shot animation state
   const [incomingShot, setIncomingShot] = useState(null);
   const [showIncomingAnimation, setShowIncomingAnimation] = useState(false);
 
@@ -201,7 +205,6 @@ function BattleshipESL() {
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
 
-  // Keep gameMode ref updated
   useEffect(() => {
     gameModeRef.current = gameMode;
   }, [gameMode]);
@@ -283,8 +286,10 @@ function BattleshipESL() {
       case 'setup-complete':
         if (currentGameMode === 'online-host') {
           setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships }));
+          setPlayer2SetupComplete(true);
         } else {
           setPlayer1(prev => ({ ...prev, grid: data.grid, ships: data.ships }));
+          setPlayer1SetupComplete(true);
         }
         setWaitingForOpponent(false);
         setGamePhase('battle');
@@ -358,7 +363,6 @@ function BattleshipESL() {
       }
     });
 
-    // Show incoming shot animation
     setIncomingShot({ results, gotHit, sunkShip: sunkShipName });
     setShowIncomingAnimation(true);
 
@@ -378,7 +382,6 @@ function BattleshipESL() {
       gameOver: shipsRemaining === 0
     });
 
-    // Show animation for 2 seconds then proceed
     setTimeout(() => {
       setShowIncomingAnimation(false);
       setIncomingShot(null);
@@ -398,7 +401,6 @@ function BattleshipESL() {
     setWaitingForOpponent(false);
     setShotResults(data.results);
     
-    // FIXED: Update tracking grid (where I've shot), not received
     const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
     
     setMyPlayer(prev => {
@@ -453,33 +455,48 @@ function BattleshipESL() {
     if (setupPlayer === 1) setPlayer1(prev => ({ ...prev, grid, ships: newPlacedShips }));
     else setPlayer2(prev => ({ ...prev, grid, ships: newPlacedShips }));
     
-    if (currentShipIndex < SHIPS.length - 1) setCurrentShipIndex(currentShipIndex + 1);
-    else finishSetup(grid, newPlacedShips);
+    if (currentShipIndex < SHIPS.length - 1) {
+      setCurrentShipIndex(currentShipIndex + 1);
+    } else {
+      // All ships placed, finish setup
+      completeSetup(grid, newPlacedShips);
+    }
   };
 
-  const finishSetup = (grid, ships) => {
+  // FIXED: Separated setup completion logic
+  const completeSetup = (grid, ships) => {
     const gifts = spawnGifts(grid, 3);
     
     if (gameMode === 'offline') {
       if (setupPlayer === 1) {
+        // Player 1 finished - save their data and mark complete
         setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
+        setPlayer1SetupComplete(true);
+        // Prepare for player 2's setup
         setSetupPlayer(2);
         setCurrentShipIndex(0);
         setPlacedShips([]);
         setIsHorizontal(true);
+        // Go to transition screen
         setGamePhase('transition');
       } else {
+        // Player 2 finished - save their data and mark complete
         setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
+        setPlayer2SetupComplete(true);
+        // Both players ready, prepare for battle
         setCurrentPlayer(1);
         setGamePhase('transition');
       }
     } else {
+      // Online mode
       if (gameMode === 'online-host') {
         setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
+        setPlayer1SetupComplete(true);
         sendMessage({ type: 'setup-complete', grid, ships });
         setWaitingForOpponent(true);
       } else {
         setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
+        setPlayer2SetupComplete(true);
         sendMessage({ type: 'setup-complete', grid, ships });
         setIsMyTurn(false);
         setWaitingForOpponent(true);
@@ -531,10 +548,15 @@ function BattleshipESL() {
       }
     }
     
-    const gifts = spawnGifts(grid, 3);
-    if (setupPlayer === 1) setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
-    else setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
-    finishSetup(grid, ships);
+    // Save to current player's state
+    if (setupPlayer === 1) {
+      setPlayer1(prev => ({ ...prev, grid, ships }));
+    } else {
+      setPlayer2(prev => ({ ...prev, grid, ships }));
+    }
+    
+    // Complete setup for this player
+    completeSetup(grid, ships);
   };
 
   // Battle Functions
@@ -546,6 +568,12 @@ function BattleshipESL() {
     const weapon = WEAPONS[selectedWeapon];
     
     if (selectedWeapon !== 'simple' && attacker.weapons[selectedWeapon] <= 0) return;
+    
+    // Check if already shot this cell
+    const attackerTracking = gameMode === 'offline' 
+      ? (currentPlayer === 1 ? player1.tracking : player2.tracking)
+      : (gameMode === 'online-host' ? player1.tracking : player2.tracking);
+    if (attackerTracking[row][col] !== null) return; // Already shot here
     
     if (gameMode !== 'offline') {
       sendMessage({ type: 'shot', row, col, weapon: selectedWeapon });
@@ -567,10 +595,8 @@ function BattleshipESL() {
     const results = [];
     let gotHit = false, sunkShipName = null;
     const defenderGrid = [...defender.grid.map(r => [...r])];
-    // FIXED: Use attacker's tracking grid for recording shots
-    const attackerTracking = currentPlayer === 1 ? [...player1.tracking.map(r => [...r])] : [...player2.tracking.map(r => [...r])];
-    // FIXED: Also update defender's received grid
-    const defenderReceived = currentPlayer === 1 ? [...player2.received.map(r => [...r])] : [...player1.received.map(r => [...r])];
+    const newAttackerTracking = currentPlayer === 1 ? [...player1.tracking.map(r => [...r])] : [...player2.tracking.map(r => [...r])];
+    const newDefenderReceived = currentPlayer === 1 ? [...player2.received.map(r => [...r])] : [...player1.received.map(r => [...r])];
     const defenderShips = [...defender.ships];
     let shipsRemaining = defender.shipsRemaining;
     let collectedGift = null;
@@ -579,7 +605,7 @@ function BattleshipESL() {
     
     targetCells.forEach(([r, c]) => {
       if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-        if (attackerTracking[r][c] === null) {
+        if (newAttackerTracking[r][c] === null) {
           const cell = defenderGrid[r][c];
           const giftIndex = defender.gifts.findIndex(g => g.row === r && g.col === c);
           if (giftIndex !== -1) {
@@ -587,20 +613,20 @@ function BattleshipESL() {
             defender.gifts.splice(giftIndex, 1);
           }
           if (cell && cell.ship !== undefined) {
-            attackerTracking[r][c] = 'hit';
-            defenderReceived[r][c] = 'hit';
+            newAttackerTracking[r][c] = 'hit';
+            newDefenderReceived[r][c] = 'hit';
             gotHit = true;
             results.push({ row: r, col: c, result: 'hit' });
             const ship = defenderShips[cell.ship];
-            const allHit = ship.cells.every(([sr, sc]) => attackerTracking[sr][sc] === 'hit');
+            const allHit = ship.cells.every(([sr, sc]) => newAttackerTracking[sr][sc] === 'hit');
             if (allHit && !ship.sunk) {
               ship.sunk = true;
               shipsRemaining--;
               sunkShipName = SHIPS[cell.ship].name;
             }
           } else {
-            attackerTracking[r][c] = 'miss';
-            defenderReceived[r][c] = 'miss';
+            newAttackerTracking[r][c] = 'miss';
+            newDefenderReceived[r][c] = 'miss';
             results.push({ row: r, col: c, result: 'miss' });
           }
         }
@@ -612,11 +638,11 @@ function BattleshipESL() {
     if (collectedGift) attackerWeapons[collectedGift.weapon]++;
 
     if (currentPlayer === 1) {
-      setPlayer1(prev => ({ ...prev, tracking: attackerTracking, weapons: attackerWeapons }));
-      setPlayer2(prev => ({ ...prev, received: defenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
+      setPlayer1(prev => ({ ...prev, tracking: newAttackerTracking, weapons: attackerWeapons }));
+      setPlayer2(prev => ({ ...prev, received: newDefenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
     } else {
-      setPlayer2(prev => ({ ...prev, tracking: attackerTracking, weapons: attackerWeapons }));
-      setPlayer1(prev => ({ ...prev, received: defenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
+      setPlayer2(prev => ({ ...prev, tracking: newAttackerTracking, weapons: attackerWeapons }));
+      setPlayer1(prev => ({ ...prev, received: newDefenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
     }
 
     setLastShot({ row, col });
@@ -669,20 +695,30 @@ function BattleshipESL() {
     }, 1500);
   };
 
+  // FIXED: Clear transition logic using explicit completion flags
   const continueFromTransition = () => {
-    if (setupPlayer === 2 && gamePhase === 'transition' && player2.ships.length === 0) setGamePhase('setup');
-    else setGamePhase('battle');
+    if (gameMode === 'offline') {
+      // Check what state we're in
+      if (player1SetupComplete && !player2SetupComplete) {
+        // Player 1 done, player 2 needs to setup
+        setGamePhase('setup');
+      } else if (player1SetupComplete && player2SetupComplete) {
+        // Both players done, start battle
+        setGamePhase('battle');
+      }
+    } else {
+      // Online mode - just go to battle
+      setGamePhase('battle');
+    }
   };
 
   // Render Functions
   const renderCell = (row, col, isOwnGrid, playerData, isSetup = false, trackingData = null) => {
     const cell = playerData.grid[row][col];
-    // For own grid, show received hits. For enemy grid, show tracking hits
     const hitData = isOwnGrid ? playerData.received : trackingData;
     const hit = hitData ? hitData[row][col] : null;
     const gift = playerData.gifts?.find(g => g.row === row && g.col === col);
     
-    // Check if this cell has an incoming shot animation
     const hasIncomingHit = showIncomingAnimation && incomingShot && 
       incomingShot.results.some(r => r.row === row && r.col === col);
     const incomingResult = hasIncomingHit ? 
@@ -753,6 +789,18 @@ function BattleshipESL() {
       </div>
     </div>
   );
+
+  // Get transition screen message
+  const getTransitionInfo = () => {
+    if (gameMode === 'offline') {
+      if (player1SetupComplete && !player2SetupComplete) {
+        return { title: 'Player 2', message: 'Get ready to place your ships!' };
+      } else if (player1SetupComplete && player2SetupComplete) {
+        return { title: `Player ${currentPlayer}`, message: 'Get ready for your turn!' };
+      }
+    }
+    return { title: '', message: '' };
+  };
 
   // Styles
   const styles = `
@@ -1398,7 +1446,7 @@ function BattleshipESL() {
       to { transform: rotate(360deg); }
     }
     
-    /* Incoming Attack Overlay - NEW */
+    /* Incoming Attack Overlay */
     .incoming-attack-overlay {
       position: fixed;
       top: 0;
@@ -1460,6 +1508,8 @@ function BattleshipESL() {
       }
     }
   `;
+
+  const transitionInfo = getTransitionInfo();
 
   return (
     <div className="game-container">
@@ -1567,7 +1617,6 @@ function BattleshipESL() {
           <div className="grids-container">
             <div className="grid-section">
               <div className="grid-title">🎯 Enemy Waters</div>
-              {/* FIXED: Pass tracking data separately for enemy grid */}
               {renderGrid(
                 false, 
                 gameMode === 'offline' 
@@ -1636,8 +1685,8 @@ function BattleshipESL() {
       {gamePhase === 'transition' && (
         <div className="transition-overlay">
           <div className="transition-content">
-            <div className="transition-player">{setupPlayer === 2 && player2.ships.length === 0 ? 'Player 2' : `Player ${currentPlayer}`}</div>
-            <div className="transition-message">{setupPlayer === 2 && player2.ships.length === 0 ? 'Get ready to place your ships!' : 'Get ready for your turn!'}</div>
+            <div className="transition-player">{transitionInfo.title}</div>
+            <div className="transition-message">{transitionInfo.message}</div>
             <button className="ready-btn" onClick={continueFromTransition}>Ready</button>
           </div>
         </div>
@@ -1654,7 +1703,7 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* INCOMING ATTACK OVERLAY - Replaces spinner during opponent's turn when being attacked */}
+      {/* INCOMING ATTACK OVERLAY */}
       {showIncomingAnimation && incomingShot && (
         <div className="incoming-attack-overlay">
           <div className="incoming-attack-title">⚠️ INCOMING ATTACK! ⚠️</div>
@@ -1671,7 +1720,7 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* WAITING OVERLAY - Only show when waiting for opponent to finish setup or answer */}
+      {/* WAITING OVERLAY */}
       {waitingForOpponent && !showIncomingAnimation && (
         <div className="waiting-overlay">
           <div className="waiting-content">
