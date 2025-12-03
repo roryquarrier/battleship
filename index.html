@@ -16,7 +16,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 4.0 (SETUP FLOW FIXED)
+// BATTLESHIP ESL - VERSION 5.0 (CRITICAL FIXES)
 // ============================================
 
 // Grammar Questions Database
@@ -167,6 +167,7 @@ function BattleshipESL() {
   // FIXED: Explicit setup completion tracking
   const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
   const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
+  const [transitionForPlayer, setTransitionForPlayer] = useState(null); // FIXED: Track which player transition is for
 
   // Setup state
   const [setupPlayer, setSetupPlayer] = useState(1);
@@ -328,6 +329,9 @@ function BattleshipESL() {
     const results = [];
     let gotHit = false;
     
+    // FIXED: Clear waiting state when receiving attack
+    setWaitingForOpponent(false);
+    
     const myPlayer = currentGameMode === 'online-host' ? player1 : player2;
     const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
     
@@ -477,6 +481,8 @@ function BattleshipESL() {
         setCurrentShipIndex(0);
         setPlacedShips([]);
         setIsHorizontal(true);
+        // FIXED: Set transition info explicitly
+        setTransitionForPlayer(2);
         // Go to transition screen
         setGamePhase('transition');
       } else {
@@ -485,6 +491,8 @@ function BattleshipESL() {
         setPlayer2SetupComplete(true);
         // Both players ready, prepare for battle
         setCurrentPlayer(1);
+        // FIXED: Set transition info explicitly
+        setTransitionForPlayer(1);
         setGamePhase('transition');
       }
     } else {
@@ -682,7 +690,10 @@ function BattleshipESL() {
         if (correct && extraTurn) {
           setGamePhase('battle');
         } else {
-          setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+          // FIXED: Set transition info BEFORE changing player to avoid async state issue
+          const nextPlayer = currentPlayer === 1 ? 2 : 1;
+          setTransitionForPlayer(nextPlayer);
+          setCurrentPlayer(nextPlayer);
           setGamePhase('transition');
         }
       }
@@ -697,6 +708,9 @@ function BattleshipESL() {
 
   // FIXED: Clear transition logic using explicit completion flags
   const continueFromTransition = () => {
+    // FIXED: Clear transition state
+    setTransitionForPlayer(null);
+    
     if (gameMode === 'offline') {
       // Check what state we're in
       if (player1SetupComplete && !player2SetupComplete) {
@@ -796,7 +810,9 @@ function BattleshipESL() {
       if (player1SetupComplete && !player2SetupComplete) {
         return { title: 'Player 2', message: 'Get ready to place your ships!' };
       } else if (player1SetupComplete && player2SetupComplete) {
-        return { title: `Player ${currentPlayer}`, message: 'Get ready for your turn!' };
+        // FIXED: Use transitionForPlayer to avoid async state issues
+        const playerNum = transitionForPlayer || currentPlayer;
+        return { title: `Player ${playerNum}`, message: 'Get ready for your turn!' };
       }
     }
     return { title: '', message: '' };
