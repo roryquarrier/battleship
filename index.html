@@ -16,7 +16,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 6.0 (ONLINE SETUP FIX)
+// BATTLESHIP ESL - VERSION 7.0 (HIT DETECTION + SHARED QUESTION)
 // ============================================
 
 // Grammar Questions Database
@@ -187,6 +187,7 @@ function BattleshipESL() {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answerResult, setAnswerResult] = useState(null);
+  const [isWatchingQuestion, setIsWatchingQuestion] = useState(false); // FIXED v7: True when watching opponent answer
 
   // Online state
   const [peerId, setPeerId] = useState('');
@@ -206,12 +207,24 @@ function BattleshipESL() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
-  const mySetupCompleteRef = useRef(false); // FIXED v6: Track my setup completion in ref
-  const waitingRef = useRef(false); // FIXED v6: Track waiting state in ref
+  const mySetupCompleteRef = useRef(false);
+  const waitingRef = useRef(false);
+  // FIXED v7: Store player data in refs to avoid stale closures
+  const player1Ref = useRef(player1);
+  const player2Ref = useRef(player2);
 
   useEffect(() => {
     gameModeRef.current = gameMode;
   }, [gameMode]);
+
+  // FIXED v7: Keep player refs in sync with state
+  useEffect(() => {
+    player1Ref.current = player1;
+  }, [player1]);
+
+  useEffect(() => {
+    player2Ref.current = player2;
+  }, [player2]);
 
   // FIXED v6: Sync setup completion refs
   useEffect(() => {
@@ -326,16 +339,34 @@ function BattleshipESL() {
       case 'shot-result':
         handleShotResult(data);
         break;
-        
+      
+      // FIXED v7: Defender sees which answer shooter selected
+      case 'answer-selected':
+        setSelectedAnswer(data.answerIndex);
+        break;
+      
+      // FIXED v7: Defender sees the result and proceeds
       case 'question-answered':
-        setWaitingForOpponent(false);
-        if (data.correct && data.gotHit) {
-          setIsMyTurn(false);
-          setGamePhase('battle');
-        } else {
-          setIsMyTurn(true);
-          setGamePhase('battle');
-        }
+        setAnswerResult(data.correct);
+        // Show result briefly then proceed
+        setTimeout(() => {
+          setWaitingForOpponent(false);
+          setIsWatchingQuestion(false);
+          setCurrentQuestion(null);
+          setSelectedAnswer(null);
+          setAnswerResult(null);
+          setShotResults([]);
+          setExtraTurn(false);
+          setSunkShip(null);
+          
+          if (data.correct && data.gotHit) {
+            setIsMyTurn(false);
+            setGamePhase('battle');
+          } else {
+            setIsMyTurn(true);
+            setGamePhase('battle');
+          }
+        }, 1500);
         break;
         
       case 'game-over':
@@ -355,21 +386,23 @@ function BattleshipESL() {
     // FIXED: Clear waiting state when receiving attack
     setWaitingForOpponent(false);
     
-    const myPlayer = currentGameMode === 'online-host' ? player1 : player2;
+    // FIXED v7: Use refs to get CURRENT player data (not stale closure)
+    const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
     const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
     
-    const newGrid = [...myPlayer.grid.map(r => [...r])];
-    const newReceived = [...myPlayer.received.map(r => [...r])];
+    // Deep copy to avoid mutation
+    const myGrid = myPlayer.grid.map(r => [...r]);
+    const newReceived = myPlayer.received.map(r => [...r]);
     let shipsRemaining = myPlayer.shipsRemaining;
     let sunkShipName = null;
-    const myShips = [...myPlayer.ships];
+    const myShips = myPlayer.ships.map(s => ({...s, cells: [...s.cells]}));
 
     const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]);
     
     targetCells.forEach(([r, c]) => {
       if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
         if (newReceived[r][c] === null) {
-          const cell = newGrid[r][c];
+          const cell = myGrid[r][c];
           if (cell && cell.ship !== undefined) {
             newReceived[r][c] = 'hit';
             gotHit = true;
@@ -400,13 +433,17 @@ function BattleshipESL() {
       ships: myShips
     }));
 
+    // FIXED v7: Generate question HERE and send to shooter
+    const question = shipsRemaining > 0 ? getRandomQuestion(difficulty) : null;
+
     sendMessage({
       type: 'shot-result',
       results,
       gotHit,
       sunkShip: sunkShipName,
       shipsRemaining,
-      gameOver: shipsRemaining === 0
+      gameOver: shipsRemaining === 0,
+      question // FIXED v7: Send same question to shooter
     });
 
     setTimeout(() => {
@@ -417,7 +454,9 @@ function BattleshipESL() {
         setWinner(currentGameMode === 'online-host' ? 2 : 1);
         setGamePhase('gameover');
       } else {
-        setCurrentQuestion(getRandomQuestion(difficulty));
+        // FIXED v7: Use the same question, watch-only mode
+        setCurrentQuestion(question);
+        setIsWatchingQuestion(true); // Defender watches, can't answer
         setGamePhase('question');
       }
     }, 2000);
@@ -445,7 +484,9 @@ function BattleshipESL() {
       setGamePhase('gameover');
     } else {
       setExtraTurn(data.gotHit);
-      setCurrentQuestion(getRandomQuestion(difficulty));
+      // FIXED v7: Use the SAME question from defender, shooter can answer
+      setCurrentQuestion(data.question);
+      setIsWatchingQuestion(false); // Shooter answers
       setGamePhase('question');
     }
   };
@@ -705,12 +746,21 @@ function BattleshipESL() {
 
   // Question Handling
   const handleAnswer = (index) => {
+    // Only the shooter can answer (not watching)
+    if (isWatchingQuestion) return;
+    
     setSelectedAnswer(index);
     const correct = index === currentQuestion.answer;
     setAnswerResult(correct);
 
+    // FIXED v7: Send selection immediately so defender can see
+    if (gameMode !== 'offline') {
+      sendMessage({ type: 'answer-selected', answerIndex: index });
+    }
+
     setTimeout(() => {
       if (gameMode !== 'offline') {
+        // FIXED v7: Send result to defender
         sendMessage({ type: 'question-answered', correct, gotHit: extraTurn });
         
         if (correct && extraTurn) {
@@ -738,6 +788,7 @@ function BattleshipESL() {
       setShotResults([]);
       setExtraTurn(false);
       setSunkShip(null);
+      setIsWatchingQuestion(false);
     }, 1500);
   };
 
@@ -1357,6 +1408,20 @@ function BattleshipESL() {
       font-weight: bold;
       margin-top: 10px;
     }
+    .watching-indicator {
+      background: rgba(0, 217, 255, 0.2);
+      border: 2px solid #00d9ff;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      color: #00d9ff;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
     .question-header {
       font-size: 1.2rem;
       color: #00d9ff;
@@ -1760,17 +1825,37 @@ function BattleshipESL() {
       {gamePhase === 'question' && currentQuestion && (
         <div className="question-overlay">
           <div className="question-modal">
-            <div className={`shot-result ${shotResults.some(r => r.result === 'hit') ? 'hit' : 'miss'}`}>
-              <div className="shot-result-text">{shotResults.some(r => r.result === 'hit') ? '💥 HIT!' : '💨 MISS!'}</div>
-              <div>{shotResults.filter(r => r.result === 'hit').length} hit(s), {shotResults.filter(r => r.result === 'miss').length} miss(es)</div>
-              {sunkShip && <div className="sunk-announcement">🚢 You sunk their {sunkShip}!</div>}
-              {extraTurn && <div className="extra-turn-notice">⚡ Answer correctly for another turn!</div>}
-            </div>
+            {/* FIXED v7: Different display for shooter vs watcher */}
+            {isWatchingQuestion ? (
+              // Defender watching shooter answer
+              <>
+                <div className={`shot-result ${incomingShot?.gotHit ? 'hit' : 'miss'}`}>
+                  <div className="shot-result-text">{incomingShot?.gotHit ? '💥 YOUR SHIP WAS HIT!' : '💨 THEY MISSED!'}</div>
+                  {incomingShot?.sunkShip && <div className="sunk-announcement">🚢 Your {incomingShot.sunkShip} was sunk!</div>}
+                </div>
+                <div className="watching-indicator">👀 Opponent is answering...</div>
+              </>
+            ) : (
+              // Shooter answering
+              <div className={`shot-result ${shotResults.some(r => r.result === 'hit') ? 'hit' : 'miss'}`}>
+                <div className="shot-result-text">{shotResults.some(r => r.result === 'hit') ? '💥 HIT!' : '💨 MISS!'}</div>
+                <div>{shotResults.filter(r => r.result === 'hit').length} hit(s), {shotResults.filter(r => r.result === 'miss').length} miss(es)</div>
+                {sunkShip && <div className="sunk-announcement">🚢 You sunk their {sunkShip}!</div>}
+                {extraTurn && <div className="extra-turn-notice">⚡ Answer correctly for another turn!</div>}
+              </div>
+            )}
             <div className="question-header">📚 Grammar Challenge</div>
             <div className="question-text">{currentQuestion.q}</div>
             <div className="options-grid">
               {currentQuestion.options.map((option, idx) => (
-                <button key={idx} className={`option-btn ${selectedAnswer === idx ? 'selected' : ''} ${answerResult !== null && idx === currentQuestion.answer ? 'correct' : ''} ${answerResult === false && selectedAnswer === idx ? 'incorrect' : ''}`} onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null}>{option}</button>
+                <button 
+                  key={idx} 
+                  className={`option-btn ${selectedAnswer === idx ? 'selected' : ''} ${answerResult !== null && idx === currentQuestion.answer ? 'correct' : ''} ${answerResult === false && selectedAnswer === idx ? 'incorrect' : ''}`} 
+                  onClick={() => handleAnswer(idx)} 
+                  disabled={selectedAnswer !== null || isWatchingQuestion}
+                >
+                  {option}
+                </button>
               ))}
             </div>
             {answerResult !== null && <div className={`answer-feedback ${answerResult ? 'correct' : 'incorrect'}`}>{answerResult ? '✓ Correct!' : '✗ Incorrect!'}</div>}
