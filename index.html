@@ -17,12 +17,11 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.6 (NO OVERLAY + DYNAMIC AIRDROPS + MORE QUESTIONS)
+// BATTLESHIP ESL - VERSION 9.7 (FIXED CONNECTION)
 // ============================================
 
 const grammarQuestions = {
   easy: [
-    // Be verbs
     { q: "I ___ a student.", options: ["am", "is", "are", "be"], answer: 0 },
     { q: "She ___ my sister.", options: ["am", "is", "are", "be"], answer: 1 },
     { q: "They ___ playing football.", options: ["is", "am", "are", "be"], answer: 2 },
@@ -31,69 +30,58 @@ const grammarQuestions = {
     { q: "My parents ___ at home.", options: ["is", "am", "are", "be"], answer: 2 },
     { q: "The sun ___ bright.", options: ["is", "are", "am", "be"], answer: 0 },
     { q: "You ___ very tall.", options: ["is", "am", "are", "be"], answer: 2 },
-    // Articles
     { q: "This is ___ apple.", options: ["a", "an", "the", "some"], answer: 1 },
     { q: "I see ___ elephant.", options: ["a", "an", "the", "some"], answer: 1 },
     { q: "She has ___ umbrella.", options: ["a", "an", "the", "some"], answer: 1 },
     { q: "He is ___ honest man.", options: ["a", "an", "the", "some"], answer: 1 },
     { q: "I want ___ banana.", options: ["a", "an", "the", "some"], answer: 0 },
     { q: "Give me ___ book on the table.", options: ["a", "an", "the", "some"], answer: 2 },
-    // Have/Has
     { q: "He ___ a dog.", options: ["have", "has", "having", "had"], answer: 1 },
     { q: "They ___ many toys.", options: ["have", "has", "having", "had"], answer: 0 },
     { q: "She ___ blue eyes.", options: ["have", "has", "having", "had"], answer: 1 },
     { q: "We ___ a big house.", options: ["have", "has", "having", "had"], answer: 0 },
     { q: "The dog ___ a long tail.", options: ["have", "has", "having", "had"], answer: 1 },
-    // Simple present
     { q: "She ___ to school every day.", options: ["go", "goes", "going", "went"], answer: 1 },
     { q: "He ___ breakfast at 7am.", options: ["eat", "eats", "eating", "ate"], answer: 1 },
     { q: "They ___ English very well.", options: ["speak", "speaks", "speaking", "spoke"], answer: 0 },
     { q: "My mother ___ delicious food.", options: ["cook", "cooks", "cooking", "cooked"], answer: 1 },
     { q: "The bird ___ in the sky.", options: ["fly", "flies", "flying", "flew"], answer: 1 },
     { q: "Water ___ at 100 degrees.", options: ["boil", "boils", "boiling", "boiled"], answer: 1 },
-    // Present continuous
     { q: "I like ___ ice cream.", options: ["eat", "eating", "ate", "eats"], answer: 1 },
     { q: "She is ___ a book now.", options: ["read", "reads", "reading", "red"], answer: 2 },
     { q: "They are ___ in the park.", options: ["play", "plays", "playing", "played"], answer: 2 },
     { q: "He is ___ his homework.", options: ["do", "does", "doing", "did"], answer: 2 },
     { q: "We are ___ to music.", options: ["listen", "listens", "listening", "listened"], answer: 2 },
-    // Question words
     { q: "___ is your name?", options: ["Who", "What", "Where", "When"], answer: 1 },
     { q: "___ do you live?", options: ["Who", "What", "Where", "When"], answer: 2 },
     { q: "___ is your birthday?", options: ["Who", "What", "Where", "When"], answer: 3 },
     { q: "___ is your teacher?", options: ["Who", "What", "Where", "When"], answer: 0 },
     { q: "___ are you crying?", options: ["Who", "What", "Where", "Why"], answer: 3 },
     { q: "___ books do you have?", options: ["How many", "How much", "What", "Where"], answer: 0 },
-    // Negatives
     { q: "She ___ not like vegetables.", options: ["do", "does", "is", "are"], answer: 1 },
     { q: "I ___ not understand.", options: ["do", "does", "is", "are"], answer: 0 },
     { q: "They ___ not coming today.", options: ["do", "does", "is", "are"], answer: 3 },
     { q: "He ___ not play tennis.", options: ["do", "does", "is", "are"], answer: 1 },
-    // There is/are
     { q: "There ___ two birds.", options: ["is", "are", "am", "be"], answer: 1 },
     { q: "There ___ a cat in the garden.", options: ["is", "are", "am", "be"], answer: 0 },
     { q: "There ___ many people here.", options: ["is", "are", "am", "be"], answer: 1 },
     { q: "There ___ some water in the glass.", options: ["is", "are", "am", "be"], answer: 0 },
-    // Can
     { q: "I can ___ a bike.", options: ["ride", "rides", "riding", "rode"], answer: 0 },
     { q: "She can ___ very fast.", options: ["run", "runs", "running", "ran"], answer: 0 },
     { q: "Can you ___ me?", options: ["help", "helps", "helping", "helped"], answer: 0 },
     { q: "Birds can ___ in the sky.", options: ["fly", "flies", "flying", "flew"], answer: 0 },
-    // Prepositions
     { q: "The cat is ___ the table.", options: ["in", "on", "at", "to"], answer: 1 },
     { q: "We go to school ___ Monday.", options: ["in", "on", "at", "to"], answer: 1 },
     { q: "I wake up ___ 7 o'clock.", options: ["in", "on", "at", "to"], answer: 2 },
     { q: "She lives ___ London.", options: ["in", "on", "at", "to"], answer: 0 },
     { q: "The book is ___ the bag.", options: ["in", "on", "at", "to"], answer: 0 },
     { q: "He is waiting ___ the bus stop.", options: ["in", "on", "at", "to"], answer: 2 },
-    // Possessives
     { q: "This is ___ book.", options: ["I", "me", "my", "mine"], answer: 2 },
     { q: "That car is ___.", options: ["they", "them", "their", "theirs"], answer: 3 },
     { q: "___ name is John.", options: ["He", "Him", "His", "He's"], answer: 2 },
     { q: "The dog wagged ___ tail.", options: ["it", "it's", "its", "its'"], answer: 2 }
   ],
   medium: [
-    // Present perfect
     { q: "She ___ finished her homework.", options: ["have", "has", "had", "having"], answer: 1 },
     { q: "I ___ never been to Japan.", options: ["have", "has", "had", "having"], answer: 0 },
     { q: "They ___ already eaten lunch.", options: ["have", "has", "had", "having"], answer: 0 },
@@ -101,61 +89,50 @@ const grammarQuestions = {
     { q: "We ___ just arrived.", options: ["have", "has", "had", "having"], answer: 0 },
     { q: "___ you ever seen a whale?", options: ["Have", "Has", "Had", "Do"], answer: 0 },
     { q: "She ___ known him since childhood.", options: ["have", "has", "had", "having"], answer: 1 },
-    // Past tense
     { q: "She ___ studying when I called.", options: ["is", "was", "were", "been"], answer: 1 },
     { q: "They ___ at the party yesterday.", options: ["is", "was", "were", "been"], answer: 2 },
     { q: "I ___ to the store last night.", options: ["go", "goes", "went", "gone"], answer: 2 },
     { q: "He ___ his keys yesterday.", options: ["lose", "loses", "lost", "losing"], answer: 2 },
     { q: "We ___ a great movie last week.", options: ["see", "sees", "saw", "seen"], answer: 2 },
     { q: "She ___ me a letter.", options: ["write", "writes", "wrote", "written"], answer: 2 },
-    // Conditionals
     { q: "If it rains, I ___ stay home.", options: ["will", "would", "can", "could"], answer: 0 },
     { q: "If I ___ rich, I would travel.", options: ["am", "was", "were", "be"], answer: 2 },
     { q: "I ___ help you if I had time.", options: ["will", "would", "can", "shall"], answer: 1 },
     { q: "If she studies, she ___ pass.", options: ["will", "would", "can", "could"], answer: 0 },
     { q: "What ___ you do if you won?", options: ["will", "would", "can", "shall"], answer: 1 },
-    // Comparatives
     { q: "The movie was ___ than I expected.", options: ["good", "better", "best", "more good"], answer: 1 },
     { q: "She is ___ than her sister.", options: ["tall", "taller", "tallest", "more tall"], answer: 1 },
     { q: "This book is ___ than that one.", options: ["interesting", "more interesting", "most interesting", "interestinger"], answer: 1 },
     { q: "He runs ___ than me.", options: ["fast", "faster", "fastest", "more fast"], answer: 1 },
     { q: "This is the ___ day of my life!", options: ["happy", "happier", "happiest", "more happy"], answer: 2 },
     { q: "She is the ___ student in class.", options: ["smart", "smarter", "smartest", "more smart"], answer: 2 },
-    // Relative clauses
     { q: "He asked me ___ I was going.", options: ["where", "what", "which", "who"], answer: 0 },
     { q: "The man ___ called is my uncle.", options: ["who", "which", "what", "where"], answer: 0 },
     { q: "The book ___ I read was great.", options: ["who", "which", "what", "where"], answer: 1 },
     { q: "This is the place ___ we met.", options: ["who", "which", "what", "where"], answer: 3 },
     { q: "The woman ___ bag was stolen called police.", options: ["who", "whose", "which", "whom"], answer: 1 },
-    // Wish
     { q: "I wish I ___ fly.", options: ["can", "could", "will", "would"], answer: 1 },
     { q: "She wishes she ___ taller.", options: ["is", "was", "were", "be"], answer: 2 },
     { q: "I wish I ___ studied harder.", options: ["have", "has", "had", "having"], answer: 2 },
     { q: "He wishes he ___ speak French.", options: ["can", "could", "will", "would"], answer: 1 },
-    // Conjunctions
     { q: "Neither Tom ___ Jerry came.", options: ["or", "nor", "and", "but"], answer: 1 },
     { q: "I like tea ___ coffee.", options: ["or", "nor", "and", "but"], answer: 2 },
     { q: "She is smart ___ lazy.", options: ["or", "nor", "and", "but"], answer: 3 },
     { q: "Either you ___ I will go.", options: ["or", "nor", "and", "but"], answer: 0 },
     { q: "I was tired, ___ I kept working.", options: ["so", "but", "and", "or"], answer: 1 },
-    // Time expressions
     { q: "I have been waiting ___ two hours.", options: ["since", "for", "from", "during"], answer: 1 },
     { q: "She has lived here ___ 2010.", options: ["since", "for", "from", "during"], answer: 0 },
     { q: "I worked ___ the summer.", options: ["since", "for", "from", "during"], answer: 3 },
     { q: "We've been friends ___ many years.", options: ["since", "for", "from", "during"], answer: 1 },
-    // Passive voice
     { q: "The book ___ by Shakespeare.", options: ["wrote", "written", "was written", "is writing"], answer: 2 },
     { q: "The cake ___ by my mother.", options: ["made", "was made", "is making", "makes"], answer: 1 },
     { q: "English ___ in many countries.", options: ["speak", "speaks", "is spoken", "speaking"], answer: 2 },
     { q: "The letter ___ yesterday.", options: ["sent", "was sent", "is sent", "sending"], answer: 1 },
     { q: "The window ___ by the storm.", options: ["broke", "was broken", "is broken", "breaking"], answer: 1 },
-    // Modal verbs
     { q: "You ___ see a doctor.", options: ["should", "can", "may", "might"], answer: 0 },
     { q: "She ___ be at home now.", options: ["must", "should", "can", "will"], answer: 0 },
     { q: "___ I use your phone?", options: ["Must", "Should", "May", "Will"], answer: 2 },
     { q: "You ___ smoke here.", options: ["mustn't", "shouldn't", "can't", "won't"], answer: 0 },
-    { q: "He ___ to work harder.", options: ["should", "ought", "must", "can"], answer: 1 },
-    // Gerunds/Infinitives
     { q: "I enjoy ___ books.", options: ["read", "to read", "reading", "reads"], answer: 2 },
     { q: "She wants ___ a doctor.", options: ["become", "to become", "becoming", "becomes"], answer: 1 },
     { q: "He avoided ___ me.", options: ["meet", "to meet", "meeting", "meets"], answer: 2 },
@@ -163,68 +140,55 @@ const grammarQuestions = {
     { q: "They finished ___ the project.", options: ["complete", "to complete", "completing", "completes"], answer: 2 }
   ],
   hard: [
-    // Third conditional
     { q: "Had I known, I ___ differently.", options: ["would act", "would have acted", "will act", "acted"], answer: 1 },
     { q: "If she had studied, she ___.", options: ["would pass", "would have passed", "will pass", "passed"], answer: 1 },
     { q: "I ___ if I had seen him.", options: ["would tell", "would have told", "will tell", "told"], answer: 1 },
     { q: "Had they arrived earlier, they ___ the show.", options: ["would catch", "would have caught", "will catch", "caught"], answer: 1 },
-    // Inversion
     { q: "Not only ___ late, but he also forgot.", options: ["he was", "was he", "he is", "is he"], answer: 1 },
     { q: "Never ___ such beauty.", options: ["I have seen", "have I seen", "I saw", "did I see"], answer: 1 },
     { q: "Rarely ___ so much talent.", options: ["we see", "do we see", "we saw", "did we saw"], answer: 1 },
     { q: "Seldom ___ on time.", options: ["he arrives", "does he arrive", "he arrived", "did he arrived"], answer: 1 },
     { q: "Little ___ that he would win.", options: ["he knew", "did he know", "he did know", "knew he"], answer: 1 },
     { q: "Only then ___ the truth.", options: ["I realized", "did I realize", "I did realize", "realized I"], answer: 1 },
-    // Future perfect
     { q: "The report ___ by tomorrow.", options: ["will finish", "will be finished", "finishes", "is finishing"], answer: 1 },
     { q: "By next year, I ___ graduated.", options: ["will", "will have", "would", "would have"], answer: 1 },
     { q: "She ___ the book by tonight.", options: ["will read", "will have read", "reads", "is reading"], answer: 1 },
     { q: "They ___ for 20 years next month.", options: ["will marry", "will have been married", "are married", "were married"], answer: 1 },
-    // Subjunctive
     { q: "It's essential that he ___ on time.", options: ["is", "be", "was", "were"], answer: 1 },
     { q: "I suggest that she ___ early.", options: ["leaves", "leave", "left", "leaving"], answer: 1 },
     { q: "It's important that everyone ___ present.", options: ["is", "be", "are", "were"], answer: 1 },
     { q: "The doctor recommended that he ___ rest.", options: ["gets", "get", "got", "getting"], answer: 1 },
-    // Complex time clauses
     { q: "Scarcely had I arrived ___ it started raining.", options: ["than", "when", "then", "that"], answer: 1 },
     { q: "No sooner had she left ___ the phone rang.", options: ["when", "than", "then", "that"], answer: 1 },
     { q: "Hardly had we begun ___ it ended.", options: ["when", "than", "then", "before"], answer: 0 },
     { q: "Barely had he spoken ___ she interrupted.", options: ["when", "than", "then", "that"], answer: 0 },
-    // High time / It's time
     { q: "It's high time you ___ a decision.", options: ["make", "made", "making", "to make"], answer: 1 },
     { q: "It's time we ___ home.", options: ["go", "went", "going", "to go"], answer: 1 },
     { q: "It's about time she ___ the truth.", options: ["knows", "knew", "know", "knowing"], answer: 1 },
     { q: "It's high time they ___ their act together.", options: ["get", "got", "getting", "to get"], answer: 1 },
-    // Mixed conditionals
     { q: "Were it not for his help, I ___.", options: ["would fail", "would have failed", "will fail", "failed"], answer: 1 },
     { q: "Had I been there, I ___ now.", options: ["would know", "would have known", "will know", "knew"], answer: 0 },
     { q: "If she had taken the job, she ___ in Paris now.", options: ["would live", "would have lived", "will live", "lived"], answer: 0 },
-    // Correlative comparatives
     { q: "The more you practice, ___.", options: ["better you get", "the better you get", "you get better", "best you get"], answer: 1 },
     { q: "___ I learn, the less I know.", options: ["More", "The more", "Most", "The most"], answer: 1 },
     { q: "The sooner we leave, ___.", options: ["better", "the better", "best", "the best"], answer: 1 },
     { q: "The harder he works, ___ he earns.", options: ["more", "the more", "most", "the most"], answer: 1 },
-    // Past subjunctive
     { q: "I wish he ___ here yesterday.", options: ["was", "were", "had been", "has been"], answer: 2 },
     { q: "If only I ___ the answer then.", options: ["know", "knew", "had known", "have known"], answer: 2 },
     { q: "She acts as if she ___ the boss.", options: ["is", "was", "were", "be"], answer: 2 },
     { q: "He talks as though he ___ everything.", options: ["knows", "knew", "know", "known"], answer: 1 },
-    // Cleft sentences
     { q: "It ___ John who broke the window.", options: ["is", "was", "were", "be"], answer: 1 },
     { q: "What I need ___ a vacation.", options: ["is", "are", "was", "were"], answer: 0 },
     { q: "It was in Paris ___ they met.", options: ["where", "that", "which", "when"], answer: 1 },
     { q: "All I want ___ peace.", options: ["is", "are", "was", "were"], answer: 0 },
-    // Advanced passive
     { q: "He is said ___ very rich.", options: ["be", "to be", "being", "been"], answer: 1 },
     { q: "She is believed ___ left the country.", options: ["have", "to have", "having", "has"], answer: 1 },
     { q: "The project is expected ___ completed soon.", options: ["be", "to be", "being", "been"], answer: 1 },
     { q: "He is known ___ a genius.", options: ["be", "to be", "being", "been"], answer: 1 },
-    // Participle clauses
     { q: "___ the news, she cried.", options: ["Hear", "Heard", "Hearing", "Having heard"], answer: 3 },
     { q: "___ from the mountain, the view is stunning.", options: ["See", "Seen", "Seeing", "Having seen"], answer: 1 },
     { q: "___ all day, he was exhausted.", options: ["Work", "Worked", "Working", "Having worked"], answer: 3 },
     { q: "___ carefully, the instructions are clear.", options: ["Read", "Reading", "Having read", "Being read"], answer: 0 },
-    // Reported speech advanced
     { q: "She asked if I ___ help her.", options: ["can", "could", "will", "may"], answer: 1 },
     { q: "He wondered where she ___.", options: ["is", "was", "has been", "will be"], answer: 1 },
     { q: "They demanded that he ___ immediately.", options: ["leave", "leaves", "left", "leaving"], answer: 0 },
@@ -248,12 +212,11 @@ const WEAPONS = {
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
 };
 
-// Airdrop configuration
 const AIRDROP_CONFIG = {
-  startAfterTurn: 3,      // Start dropping after turn 3
-  checkEveryTurns: 2,     // Check for drop every 2 turns
-  baseChance: 0.35,       // 35% base chance
-  maxDropsPerPlayer: 4    // Maximum drops per player per game
+  startAfterTurn: 3,
+  checkEveryTurns: 2,
+  baseChance: 0.35,
+  maxDropsPerPlayer: 4
 };
 
 const PEER_CONFIG = {
@@ -326,7 +289,6 @@ function BattleshipESL() {
   const [answerResult, setAnswerResult] = useState(null);
   const [isWatchingQuestion, setIsWatchingQuestion] = useState(false);
 
-  // Connection state
   const [myPeerId, setMyPeerId] = useState('');
   const [hostCode, setHostCode] = useState('');
   const [peerReady, setPeerReady] = useState(false);
@@ -337,7 +299,6 @@ function BattleshipESL() {
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Animation states (inline, no overlay)
   const [hitCells, setHitCells] = useState([]);
   const [newAirdrop, setNewAirdrop] = useState(null);
   const [turnNotice, setTurnNotice] = useState(null);
@@ -345,9 +306,9 @@ function BattleshipESL() {
   const [showFiringAnimation, setShowFiringAnimation] = useState(false);
   const [turnCount, setTurnCount] = useState(0);
 
-  // Refs
   const peerRef = useRef(null);
   const connRef = useRef(null);
+  const connectedRef = useRef(false);
   const gameModeRef = useRef(null);
   const difficultyRef = useRef(difficulty);
   const player1Ref = useRef(player1);
@@ -361,6 +322,7 @@ function BattleshipESL() {
   useEffect(() => { player2Ref.current = player2; }, [player2]);
   useEffect(() => { waitingRef.current = waitingForOpponent; }, [waitingForOpponent]);
   useEffect(() => { turnCountRef.current = turnCount; }, [turnCount]);
+  useEffect(() => { connectedRef.current = connected; }, [connected]);
 
   const log = (msg) => {
     console.log('[BSL]', msg);
@@ -389,21 +351,17 @@ function BattleshipESL() {
       const text = await navigator.clipboard.readText();
       setHostCode(text.trim());
     } catch (err) {
-      log('Paste failed - use manual paste');
+      log('Paste failed');
     }
   };
 
-  // Generate an airdrop for a player
-  const trySpawnAirdrop = useCallback((playerData, setPlayerData, forOpponent = false) => {
+  const trySpawnAirdrop = useCallback((playerData, setPlayerData) => {
     const { grid, received, gifts, airdropsReceived } = playerData;
-    
-    // Check limits
     if (airdropsReceived >= AIRDROP_CONFIG.maxDropsPerPlayer) return null;
     if (turnCountRef.current < AIRDROP_CONFIG.startAfterTurn) return null;
     if (turnCountRef.current % AIRDROP_CONFIG.checkEveryTurns !== 0) return null;
     if (Math.random() > AIRDROP_CONFIG.baseChance) return null;
     
-    // Find empty cell (not ship, not hit, not already gift)
     const emptyCells = [];
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
@@ -412,7 +370,6 @@ function BattleshipESL() {
         }
       }
     }
-    
     if (emptyCells.length === 0) return null;
     
     const [row, col] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
@@ -426,7 +383,6 @@ function BattleshipESL() {
       airdropsReceived: p.airdropsReceived + 1
     }));
     
-    // Clear "new" flag after animation
     setTimeout(() => {
       setPlayerData(p => ({
         ...p,
@@ -437,7 +393,6 @@ function BattleshipESL() {
     return newGift;
   }, []);
 
-  // Send message
   const sendMsg = useCallback((msg) => {
     if (connRef.current && connRef.current.open) {
       connRef.current.send(msg);
@@ -446,8 +401,8 @@ function BattleshipESL() {
     return false;
   }, []);
 
-  // Handle incoming messages
-  const onMessage = useCallback((data) => {
+  // Message handler
+  const handleMessage = useCallback((data) => {
     log('RECV: ' + data.type);
     const isHost = gameModeRef.current === 'online-host';
 
@@ -501,7 +456,6 @@ function BattleshipESL() {
       setAnswerResult(null);
     }
     else if (data.type === 'airdrop') {
-      // Opponent got an airdrop on their grid (enemy waters for us)
       const setOpp = isHost ? setPlayer2 : setPlayer1;
       setOpp(p => ({
         ...p,
@@ -517,41 +471,7 @@ function BattleshipESL() {
     }
   }, []);
 
-  const onConnectionOpen = useCallback((conn, isHost) => {
-    log('*** CONNECTION OPEN ***');
-    connRef.current = conn;
-    setConnected(true);
-    setStatusMsg('Connected!');
-    
-    if (isHost) {
-      setTimeout(() => {
-        conn.send({ type: 'settings', difficulty: difficultyRef.current });
-        setGamePhase('setup');
-      }, 300);
-    }
-  }, []);
-
-  const setupConnection = useCallback((conn, isHost) => {
-    log('Setting up connection...');
-    connRef.current = conn;
-    
-    conn.on('open', () => onConnectionOpen(conn, isHost));
-    conn.on('data', onMessage);
-    conn.on('close', () => {
-      log('Connection closed');
-      setConnected(false);
-      setStatusMsg('Disconnected');
-    });
-    conn.on('error', (err) => {
-      log('Conn error: ' + (err.type || err));
-      setStatusMsg('Connection error');
-    });
-
-    if (conn.open) {
-      onConnectionOpen(conn, isHost);
-    }
-  }, [onMessage, onConnectionOpen]);
-
+  // HOST
   const startHost = useCallback(() => {
     setGameMode('online-host');
     setStatusMsg('Creating...');
@@ -569,23 +489,49 @@ function BattleshipESL() {
     });
 
     peer.on('connection', (conn) => {
+      // PREVENT DUPLICATE CONNECTIONS
+      if (connectedRef.current || connRef.current) {
+        log('Already connected, ignoring');
+        return;
+      }
+      
       log('Incoming connection!');
+      connRef.current = conn;
       setStatusMsg('Opponent connecting...');
-      setupConnection(conn, true);
+
+      conn.on('open', () => {
+        log('*** CONNECTION OPEN ***');
+        setConnected(true);
+        setStatusMsg('Connected!');
+        
+        // Send settings
+        setTimeout(() => {
+          log('Sending settings...');
+          conn.send({ type: 'settings', difficulty: difficultyRef.current });
+          setGamePhase('setup');
+        }, 500);
+      });
+
+      conn.on('data', handleMessage);
+      
+      conn.on('close', () => {
+        log('Connection closed');
+        setConnected(false);
+        connRef.current = null;
+      });
+
+      conn.on('error', (err) => {
+        log('Conn error: ' + err.type);
+      });
     });
 
     peer.on('error', (err) => {
       log('Peer error: ' + err.type);
       setStatusMsg('Error: ' + err.type);
     });
+  }, [handleMessage]);
 
-    peer.on('disconnected', () => {
-      if (peerRef.current && !peerRef.current.destroyed) {
-        peerRef.current.reconnect();
-      }
-    });
-  }, [setupConnection]);
-
+  // JOINER
   const startJoin = useCallback(() => {
     setGameMode('online-joiner');
     setStatusMsg('Initializing...');
@@ -605,37 +551,52 @@ function BattleshipESL() {
     peer.on('error', (err) => {
       log('Peer error: ' + err.type);
       if (err.type === 'peer-unavailable') {
-        setStatusMsg('Invalid code - check and retry');
+        setStatusMsg('Invalid code');
       } else {
         setStatusMsg('Error: ' + err.type);
       }
     });
-
-    peer.on('disconnected', () => {
-      if (peerRef.current && !peerRef.current.destroyed) {
-        peerRef.current.reconnect();
-      }
-    });
   }, []);
 
+  // Connect to host
   const doConnect = useCallback(() => {
     const code = hostCode.trim();
-    if (!code) { setStatusMsg('Enter the code first'); return; }
-    if (!peerRef.current || !peerReady) { setStatusMsg('Not ready - wait...'); return; }
+    if (!code) { setStatusMsg('Enter code first'); return; }
+    if (!peerRef.current || !peerReady) { setStatusMsg('Not ready'); return; }
+    if (connectedRef.current) { setStatusMsg('Already connected'); return; }
 
     log('Connecting to: ' + code.substring(0, 8) + '...');
     setStatusMsg('Connecting...');
 
     const conn = peerRef.current.connect(code, { reliable: true, serialization: 'json' });
-    setupConnection(conn, false);
+    connRef.current = conn;
+
+    conn.on('open', () => {
+      log('*** CONNECTION OPEN ***');
+      setConnected(true);
+      setStatusMsg('Connected!');
+    });
+
+    conn.on('data', handleMessage);
+
+    conn.on('close', () => {
+      log('Connection closed');
+      setConnected(false);
+      connRef.current = null;
+    });
+
+    conn.on('error', (err) => {
+      log('Conn error: ' + err.type);
+      setStatusMsg('Connection error');
+    });
 
     setTimeout(() => {
-      if (!connected && connRef.current && !connRef.current.open) {
+      if (!connectedRef.current) {
         log('Connection timeout');
         setStatusMsg('Timeout - try again');
       }
     }, 20000);
-  }, [hostCode, peerReady, setupConnection, connected]);
+  }, [hostCode, peerReady, handleMessage]);
 
   const goBack = useCallback(() => {
     if (connRef.current) { connRef.current.close(); connRef.current = null; }
@@ -649,7 +610,6 @@ function BattleshipESL() {
     setDebugLog([]);
   }, []);
 
-  // Handle incoming shot - NO OVERLAY
   const handleIncomingShot = (data) => {
     const { row, col, weapon } = data;
     const isHost = gameModeRef.current === 'online-host';
@@ -696,7 +656,6 @@ function BattleshipESL() {
       }
     });
 
-    // Show hit animation inline
     setHitCells(results.map(r => ({ ...r, timestamp: Date.now() })));
     setTurnNotice(gotHit ? { type: 'hit', ship: sunkShipName } : { type: 'miss' });
     
@@ -705,7 +664,6 @@ function BattleshipESL() {
     const question = shipsRemaining > 0 ? getRandomQuestion(difficultyRef.current) : null;
     sendMsg({ type: 'shot-result', results, gotHit, sunkShip: sunkShipName, shipsRemaining, gameOver: shipsRemaining === 0, question, collectedGift });
 
-    // Clear animation and proceed
     setTimeout(() => {
       setHitCells([]);
       setTurnNotice(null);
@@ -784,7 +742,6 @@ function BattleshipESL() {
   };
 
   const completeSetup = (grid, ships) => {
-    // No initial gifts - they spawn during gameplay
     const isHost = gameMode === 'online-host';
     if (isHost) setPlayer1(p => ({ ...p, grid, ships, gifts: [], airdropsReceived: 0 }));
     else setPlayer2(p => ({ ...p, grid, ships, gifts: [], airdropsReceived: 0 }));
@@ -858,7 +815,6 @@ function BattleshipESL() {
         setP(p => ({ ...p, weapons: { ...p.weapons, [selectedWeapon]: p.weapons[selectedWeapon] - 1 } }));
       }
 
-      // Try to spawn airdrop for attacker after firing
       setTimeout(() => {
         const myPlayerData = isHost ? player1Ref.current : player2Ref.current;
         const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
@@ -1098,12 +1054,10 @@ function BattleshipESL() {
         <p className="subtitle">Naval Combat Grammar Challenge</p>
       </div>
 
-      {/* Airdrop notification */}
       {newAirdrop && (
         <div className="airdrop-notice">🎁 AIRDROP! {WEAPONS[newAirdrop.weapon].icon} {WEAPONS[newAirdrop.weapon].name}</div>
       )}
 
-      {/* MENU */}
       {gamePhase === 'menu' && (
         <div className="menu-container">
           <div className="menu-panel">
@@ -1168,7 +1122,6 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* SETUP */}
       {gamePhase === 'setup' && (
         <div className="setup-container">
           <div className="setup-header">
@@ -1205,7 +1158,6 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* BATTLE */}
       {gamePhase === 'battle' && (
         <div className="battle-container">
           <div className="battle-header">
@@ -1252,14 +1204,11 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* QUESTION */}
       {gamePhase === 'question' && currentQuestion && (
         <div className="question-overlay">
           <div className="question-modal">
             {isWatchingQuestion ? (
-              <>
-                <div className="watching-ind">👀 Opponent answering...</div>
-              </>
+              <div className="watching-ind">👀 Opponent answering...</div>
             ) : (
               <div className={`shot-result ${shotResults.some(r=>r.result==='hit')?'hit':''}`}>
                 <div className="shot-result-text">{shotResults.some(r=>r.result==='hit')?'💥 HIT!':'💨 MISS!'}</div>
@@ -1281,7 +1230,6 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* GAME OVER */}
       {gamePhase === 'gameover' && (
         <div className="gameover-overlay">
           <div className="gameover-content">
