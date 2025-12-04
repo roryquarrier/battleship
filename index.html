@@ -17,7 +17,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.7 (FIXED CONNECTION)
+// BATTLESHIP ESL - VERSION 9.8 (FIXED CONNECTION)
 // ============================================
 
 const grammarQuestions = {
@@ -219,27 +219,33 @@ const AIRDROP_CONFIG = {
   maxDropsPerPlayer: 4
 };
 
+// Using multiple free TURN servers for reliability
 const PEER_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
-  ]
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      // Free TURN from Metered
+      {
+        urls: 'turn:a.relay.metered.ca:80',
+        username: 'e8dd65d92c5e139c1b120f59',
+        credential: 'uWdWNmkhvyqTW1QP'
+      },
+      {
+        urls: 'turn:a.relay.metered.ca:443',
+        username: 'e8dd65d92c5e139c1b120f59',
+        credential: 'uWdWNmkhvyqTW1QP'
+      },
+      {
+        urls: 'turn:a.relay.metered.ca:443?transport=tcp',
+        username: 'e8dd65d92c5e139c1b120f59',
+        credential: 'uWdWNmkhvyqTW1QP'
+      }
+    ]
+  }
 };
 
 const createEmptyGrid = () => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
@@ -308,13 +314,13 @@ function BattleshipESL() {
 
   const peerRef = useRef(null);
   const connRef = useRef(null);
-  const connectedRef = useRef(false);
   const gameModeRef = useRef(null);
   const difficultyRef = useRef(difficulty);
   const player1Ref = useRef(player1);
   const player2Ref = useRef(player2);
   const waitingRef = useRef(false);
   const turnCountRef = useRef(0);
+  const connectionHandledRef = useRef(false);
 
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
   useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
@@ -322,12 +328,11 @@ function BattleshipESL() {
   useEffect(() => { player2Ref.current = player2; }, [player2]);
   useEffect(() => { waitingRef.current = waitingForOpponent; }, [waitingForOpponent]);
   useEffect(() => { turnCountRef.current = turnCount; }, [turnCount]);
-  useEffect(() => { connectedRef.current = connected; }, [connected]);
 
-  const log = (msg) => {
+  const log = useCallback((msg) => {
     console.log('[BSL]', msg);
-    setDebugLog(prev => [...prev.slice(-14), msg]);
-  };
+    setDebugLog(prev => [...prev.slice(-19), msg]);
+  }, []);
 
   const copyToClipboard = async (text) => {
     try {
@@ -401,7 +406,7 @@ function BattleshipESL() {
     return false;
   }, []);
 
-  // Message handler
+  // Message handler - defined early so it can be referenced
   const handleMessage = useCallback((data) => {
     log('RECV: ' + data.type);
     const isHost = gameModeRef.current === 'online-host';
@@ -469,80 +474,109 @@ function BattleshipESL() {
         }));
       }, 2000);
     }
-  }, []);
+  }, [log]);
+
+  // Connection open handler
+  const onConnectionOpen = useCallback((conn, isHost) => {
+    log('*** CONNECTION OPEN ***');
+    connRef.current = conn;
+    setConnected(true);
+    setStatusMsg('Connected!');
+    
+    if (isHost) {
+      log('Sending settings...');
+      setTimeout(() => {
+        conn.send({ type: 'settings', difficulty: difficultyRef.current });
+        setGamePhase('setup');
+      }, 300);
+    }
+  }, [log]);
+
+  // Setup connection handlers
+  const setupConnection = useCallback((conn, isHost) => {
+    log('Setting up connection handlers');
+    
+    conn.on('data', handleMessage);
+    
+    conn.on('close', () => {
+      log('Connection closed');
+      setConnected(false);
+      connRef.current = null;
+      connectionHandledRef.current = false;
+    });
+
+    conn.on('error', (err) => {
+      log('Conn error: ' + (err.type || err));
+    });
+
+    conn.on('open', () => {
+      onConnectionOpen(conn, isHost);
+    });
+
+    // Check if already open (race condition fix)
+    if (conn.open) {
+      log('Connection already open!');
+      onConnectionOpen(conn, isHost);
+    }
+  }, [log, handleMessage, onConnectionOpen]);
 
   // HOST
   const startHost = useCallback(() => {
     setGameMode('online-host');
     setStatusMsg('Creating...');
     setIsMyTurn(true);
+    connectionHandledRef.current = false;
     log('Starting host...');
 
-    const peer = new Peer(null, { debug: 2, config: PEER_CONFIG });
+    const peer = new Peer(null, { debug: 1, ...PEER_CONFIG });
     peerRef.current = peer;
 
     peer.on('open', (id) => {
-      log('Peer ready: ' + id.substring(0, 8) + '...');
+      log('Host peer open: ' + id.substring(0, 8));
       setMyPeerId(id);
       setPeerReady(true);
       setStatusMsg('Share code with opponent');
     });
 
     peer.on('connection', (conn) => {
-      // PREVENT DUPLICATE CONNECTIONS
-      if (connectedRef.current || connRef.current) {
-        log('Already connected, ignoring');
+      // Prevent handling multiple connections
+      if (connectionHandledRef.current) {
+        log('Ignoring duplicate connection');
         return;
       }
+      connectionHandledRef.current = true;
       
-      log('Incoming connection!');
-      connRef.current = conn;
-      setStatusMsg('Opponent connecting...');
-
-      conn.on('open', () => {
-        log('*** CONNECTION OPEN ***');
-        setConnected(true);
-        setStatusMsg('Connected!');
-        
-        // Send settings
-        setTimeout(() => {
-          log('Sending settings...');
-          conn.send({ type: 'settings', difficulty: difficultyRef.current });
-          setGamePhase('setup');
-        }, 500);
-      });
-
-      conn.on('data', handleMessage);
-      
-      conn.on('close', () => {
-        log('Connection closed');
-        setConnected(false);
-        connRef.current = null;
-      });
-
-      conn.on('error', (err) => {
-        log('Conn error: ' + err.type);
-      });
+      log('Incoming connection from: ' + (conn.peer ? conn.peer.substring(0, 8) : 'unknown'));
+      setStatusMsg('Connecting...');
+      setupConnection(conn, true);
     });
 
     peer.on('error', (err) => {
       log('Peer error: ' + err.type);
       setStatusMsg('Error: ' + err.type);
     });
-  }, [handleMessage]);
+
+    peer.on('disconnected', () => {
+      log('Peer disconnected, reconnecting...');
+      if (peerRef.current && !peerRef.current.destroyed) {
+        peerRef.current.reconnect();
+      }
+    });
+  }, [log, setupConnection]);
 
   // JOINER
   const startJoin = useCallback(() => {
     setGameMode('online-joiner');
     setStatusMsg('Initializing...');
     setIsMyTurn(false);
+    connectionHandledRef.current = false;
     log('Starting joiner...');
 
-    const peer = new Peer(null, { debug: 2, config: PEER_CONFIG });
+    const peer = new Peer(null, { debug: 1, ...PEER_CONFIG });
     peerRef.current = peer;
 
     peer.on('open', (id) => {
-      log('Peer ready: ' + id.substring(0, 8) + '...');
+      log('Joiner peer open: ' + id.substring(0, 8));
       setMyPeerId(id);
       setPeerReady(true);
       setStatusMsg('Enter code & connect');
@@ -551,52 +585,48 @@ function BattleshipESL() {
     peer.on('error', (err) => {
       log('Peer error: ' + err.type);
       if (err.type === 'peer-unavailable') {
-        setStatusMsg('Invalid code');
+        setStatusMsg('Invalid code - check and retry');
+        connectionHandledRef.current = false;
       } else {
         setStatusMsg('Error: ' + err.type);
       }
     });
-  }, []);
+
+    peer.on('disconnected', () => {
+      log('Peer disconnected, reconnecting...');
+      if (peerRef.current && !peerRef.current.destroyed) {
+        peerRef.current.reconnect();
+      }
+    });
+  }, [log]);
 
   // Connect to host
   const doConnect = useCallback(() => {
     const code = hostCode.trim();
     if (!code) { setStatusMsg('Enter code first'); return; }
-    if (!peerRef.current || !peerReady) { setStatusMsg('Not ready'); return; }
-    if (connectedRef.current) { setStatusMsg('Already connected'); return; }
+    if (!peerRef.current || !peerReady) { setStatusMsg('Not ready yet'); return; }
+    if (connectionHandledRef.current) { setStatusMsg('Already connecting...'); return; }
 
-    log('Connecting to: ' + code.substring(0, 8) + '...');
+    connectionHandledRef.current = true;
+    log('Connecting to host: ' + code.substring(0, 8));
     setStatusMsg('Connecting...');
 
-    const conn = peerRef.current.connect(code, { reliable: true, serialization: 'json' });
-    connRef.current = conn;
-
-    conn.on('open', () => {
-      log('*** CONNECTION OPEN ***');
-      setConnected(true);
-      setStatusMsg('Connected!');
+    const conn = peerRef.current.connect(code, { 
+      reliable: true,
+      serialization: 'json'
     });
+    
+    setupConnection(conn, false);
 
-    conn.on('data', handleMessage);
-
-    conn.on('close', () => {
-      log('Connection closed');
-      setConnected(false);
-      connRef.current = null;
-    });
-
-    conn.on('error', (err) => {
-      log('Conn error: ' + err.type);
-      setStatusMsg('Connection error');
-    });
-
+    // Timeout check
     setTimeout(() => {
-      if (!connectedRef.current) {
+      if (!connected && connRef.current && !connRef.current.open) {
         log('Connection timeout');
         setStatusMsg('Timeout - try again');
+        connectionHandledRef.current = false;
       }
-    }, 20000);
-  }, [hostCode, peerReady, handleMessage]);
+    }, 25000);
+  }, [hostCode, peerReady, log, setupConnection, connected]);
 
   const goBack = useCallback(() => {
     if (connRef.current) { connRef.current.close(); connRef.current = null; }
@@ -608,6 +638,7 @@ function BattleshipESL() {
     setConnected(false);
     setStatusMsg('');
     setDebugLog([]);
+    connectionHandledRef.current = false;
   }, []);
 
   const handleIncomingShot = (data) => {
@@ -955,7 +986,7 @@ function BattleshipESL() {
     .status-dot.ready { background:#fbbf24; animation:pulse-dot 1s infinite; }
     .status-dot.connected { background:#22c55e; box-shadow:0 0 8px #22c55e; }
     @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.5} }
-    .debug-log { margin-top:12px; padding:8px; background:rgba(0,0,0,0.4); border-radius:6px; font-size:0.6rem; font-family:monospace; max-height:120px; overflow-y:auto; }
+    .debug-log { margin-top:12px; padding:8px; background:rgba(0,0,0,0.4); border-radius:6px; font-size:0.55rem; font-family:monospace; max-height:150px; overflow-y:auto; }
     .debug-log div { padding:1px 0; color:#8892b0; }
     .setup-container { display:flex; flex-direction:column; align-items:center; max-width:600px; }
     .setup-header { text-align:center; margin-bottom:15px; }
