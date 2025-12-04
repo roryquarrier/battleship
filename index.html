@@ -17,10 +17,9 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.2 (CONNECTION FIX + UI RESTRUCTURE)
+// BATTLESHIP ESL - VERSION 9.3 (ROBUST CONNECTION)
 // ============================================
 
-// Grammar Questions Database
 const grammarQuestions = {
   easy: [
     { q: "I ___ a student.", options: ["am", "is", "are", "be"], answer: 0 },
@@ -37,17 +36,7 @@ const grammarQuestions = {
     { q: "My mother ___ cooking.", options: ["is", "are", "am", "be"], answer: 0 },
     { q: "I can ___ a bike.", options: ["ride", "rides", "riding", "rode"], answer: 0 },
     { q: "The sun ___ bright.", options: ["is", "are", "am", "be"], answer: 0 },
-    { q: "We go to school ___ Monday.", options: ["in", "on", "at", "to"], answer: 1 },
-    { q: "He is ___ tall boy.", options: ["a", "an", "the", "some"], answer: 0 },
-    { q: "___ you like pizza?", options: ["Do", "Does", "Is", "Are"], answer: 0 },
-    { q: "The children ___ playing.", options: ["is", "are", "am", "was"], answer: 1 },
-    { q: "I ___ ten years old.", options: ["is", "am", "are", "be"], answer: 1 },
-    { q: "She has ___ hair.", options: ["long", "longer", "longest", "length"], answer: 0 },
-    { q: "We ___ to the park yesterday.", options: ["go", "goes", "went", "going"], answer: 2 },
-    { q: "This book is ___.", options: ["my", "mine", "me", "I"], answer: 1 },
-    { q: "I brush my ___ every morning.", options: ["tooth", "teeth", "tooths", "teeths"], answer: 1 },
-    { q: "___ are you from?", options: ["What", "Who", "Where", "When"], answer: 2 },
-    { q: "The dog is ___ the house.", options: ["inside", "on", "at", "to"], answer: 0 }
+    { q: "We go to school ___ Monday.", options: ["in", "on", "at", "to"], answer: 1 }
   ],
   medium: [
     { q: "She ___ finished her homework.", options: ["have", "has", "had", "having"], answer: 1 },
@@ -59,17 +48,7 @@ const grammarQuestions = {
     { q: "Neither Tom ___ Jerry came.", options: ["or", "nor", "and", "but"], answer: 1 },
     { q: "This is the ___ day of my life!", options: ["happy", "happier", "happiest", "more happy"], answer: 2 },
     { q: "I have been waiting ___ two hours.", options: ["since", "for", "from", "during"], answer: 1 },
-    { q: "The book ___ by Shakespeare.", options: ["wrote", "written", "was written", "is writing"], answer: 2 },
-    { q: "If I ___ you, I would study harder.", options: ["am", "was", "were", "be"], answer: 2 },
-    { q: "She asked me ___ I had eaten.", options: ["if", "that", "what", "which"], answer: 0 },
-    { q: "He runs ___ than his brother.", options: ["fast", "faster", "fastest", "more fast"], answer: 1 },
-    { q: "I ___ never seen such beauty.", options: ["has", "have", "had", "having"], answer: 1 },
-    { q: "The news ___ shocking.", options: ["is", "are", "were", "have"], answer: 0 },
-    { q: "She made me ___ the dishes.", options: ["wash", "washed", "washing", "to wash"], answer: 0 },
-    { q: "By next year, I ___ graduated.", options: ["will", "will have", "would", "have"], answer: 1 },
-    { q: "___ of the students passed.", options: ["Most", "Much", "Many", "A lot"], answer: 0 },
-    { q: "He denied ___ the window.", options: ["break", "broke", "breaking", "to break"], answer: 2 },
-    { q: "I'd rather ___ at home.", options: ["stay", "stayed", "staying", "to stay"], answer: 0 }
+    { q: "The book ___ by Shakespeare.", options: ["wrote", "written", "was written", "is writing"], answer: 2 }
   ],
   hard: [
     { q: "Had I known, I ___ differently.", options: ["would act", "would have acted", "will act", "acted"], answer: 1 },
@@ -81,21 +60,10 @@ const grammarQuestions = {
     { q: "The more you practice, ___.", options: ["better you get", "the better you get", "you get better", "best you get"], answer: 1 },
     { q: "I wish he ___ here yesterday.", options: ["was", "were", "had been", "has been"], answer: 2 },
     { q: "No sooner had she left ___ the phone rang.", options: ["when", "than", "then", "that"], answer: 1 },
-    { q: "Little ___ that he would win.", options: ["he knew", "did he know", "he did know", "knew he"], answer: 1 },
-    { q: "The proposal ___ at the meeting.", options: ["discussed", "was discussed", "discussing", "has discussed"], answer: 1 },
-    { q: "By the time he arrives, we ___.", options: ["will leave", "will have left", "leave", "left"], answer: 1 },
-    { q: "So ___ was the storm that trees fell.", options: ["strong", "strongly", "strength", "strengthen"], answer: 0 },
-    { q: "He suggested that she ___ early.", options: ["leaves", "leave", "left", "leaving"], answer: 1 },
-    { q: "___ had he spoken than everyone laughed.", options: ["No sooner", "Hardly", "Scarcely", "Barely"], answer: 1 },
-    { q: "It's essential that he ___ on time.", options: ["is", "be", "was", "were"], answer: 1 },
-    { q: "Should you need help, ___ me.", options: ["call", "called", "calling", "to call"], answer: 0 },
-    { q: "Never ___ such nonsense!", options: ["I heard", "have I heard", "I have heard", "did I heard"], answer: 1 },
-    { q: "The book, ___ I bought yesterday, is great.", options: ["that", "which", "what", "whose"], answer: 1 },
-    { q: "___ the circumstances, he did well.", options: ["Given", "Giving", "Gave", "Give"], answer: 0 }
+    { q: "Little ___ that he would win.", options: ["he knew", "did he know", "he did know", "knew he"], answer: 1 }
   ]
 };
 
-// Game Constants
 const GRID_SIZE = 10;
 const SHIPS = [
   { name: 'Carrier', size: 5, color: '#e74c3c' },
@@ -112,16 +80,6 @@ const WEAPONS = {
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
 };
 
-const AIRDROP_CONFIG = {
-  checkIntervalTurns: 2,
-  baseChance: 0.12,
-  maxChance: 0.35,
-  droughtThreshold: 8,
-  chanceIncrement: 0.05,
-  maxAirdropsPerGame: 6
-};
-
-// Helper Functions
 const createEmptyGrid = () => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
 const getRandomQuestion = (difficulty) => {
   const questions = grammarQuestions[difficulty];
@@ -134,328 +92,287 @@ const generateRainPattern = () => {
     const x = Math.floor(Math.random() * 5) - 2;
     const y = Math.floor(Math.random() * 5) - 2;
     const key = `${x},${y}`;
-    if (!used.has(key)) {
-      used.add(key);
-      pattern.push([x, y]);
-    }
+    if (!used.has(key)) { used.add(key); pattern.push([x, y]); }
   }
   return pattern;
 };
 
-// Main Game Component
 function BattleshipESL() {
   const { useState, useEffect, useCallback, useRef } = React;
 
-  // Game state
   const [gameMode, setGameMode] = useState(null);
   const [gamePhase, setGamePhase] = useState('menu');
   const [difficulty, setDifficulty] = useState('medium');
   const [winner, setWinner] = useState(null);
 
-  // Player states
   const [player1, setPlayer1] = useState({
-    grid: createEmptyGrid(),
-    ships: [],
-    tracking: createEmptyGrid(),
-    received: createEmptyGrid(),
-    weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 },
-    gifts: [],
-    shipsRemaining: 5
+    grid: createEmptyGrid(), ships: [], tracking: createEmptyGrid(), received: createEmptyGrid(),
+    weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 }, gifts: [], shipsRemaining: 5
   });
-
   const [player2, setPlayer2] = useState({
-    grid: createEmptyGrid(),
-    ships: [],
-    tracking: createEmptyGrid(),
-    received: createEmptyGrid(),
-    weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 },
-    gifts: [],
-    shipsRemaining: 5
+    grid: createEmptyGrid(), ships: [], tracking: createEmptyGrid(), received: createEmptyGrid(),
+    weapons: { simple: Infinity, big: 0, rain: 0, nuclear: 0 }, gifts: [], shipsRemaining: 5
   });
 
-  // Setup state
-  const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
-  const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
   const [opponentSetupReceived, setOpponentSetupReceived] = useState(false);
   const [currentShipIndex, setCurrentShipIndex] = useState(0);
   const [isHorizontal, setIsHorizontal] = useState(true);
   const [placedShips, setPlacedShips] = useState([]);
-
-  // Battle state
   const [selectedWeapon, setSelectedWeapon] = useState('simple');
   const [shotResults, setShotResults] = useState([]);
   const [extraTurn, setExtraTurn] = useState(false);
   const [sunkShip, setSunkShip] = useState(null);
-
-  // Question state
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answerResult, setAnswerResult] = useState(null);
   const [isWatchingQuestion, setIsWatchingQuestion] = useState(false);
 
-  // Online state
-  const [peerId, setPeerId] = useState('');
-  const [remotePeerId, setRemotePeerId] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
+  // Connection state - simplified and explicit
+  const [myPeerId, setMyPeerId] = useState('');
+  const [hostCode, setHostCode] = useState('');
+  const [peerReady, setPeerReady] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('');
-  
-  // Animation states
+
   const [incomingShot, setIncomingShot] = useState(null);
   const [showIncomingAnimation, setShowIncomingAnimation] = useState(false);
   const [firingAnimation, setFiringAnimation] = useState(null);
   const [showFiringAnimation, setShowFiringAnimation] = useState(false);
-  
-  // Airdrop state
   const [turnCount, setTurnCount] = useState(0);
-  const [airdropsSinceLastSpawn, setAirdropsSinceLastSpawn] = useState(0);
-  const [totalAirdrops, setTotalAirdrops] = useState(0);
-  const [newAirdropMessage, setNewAirdropMessage] = useState(null);
 
-  // Refs for callbacks
+  // Refs
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
   const difficultyRef = useRef(difficulty);
-  const waitingRef = useRef(false);
   const player1Ref = useRef(player1);
   const player2Ref = useRef(player2);
+  const waitingRef = useRef(false);
 
-  // Keep refs in sync
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
   useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
   useEffect(() => { player1Ref.current = player1; }, [player1]);
   useEffect(() => { player2Ref.current = player2; }, [player2]);
   useEffect(() => { waitingRef.current = waitingForOpponent; }, [waitingForOpponent]);
 
-  // Copy to clipboard
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
       document.execCommand('copy');
-      document.body.removeChild(textArea);
+      document.body.removeChild(ta);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }
   };
 
-  // Message handler - defined first so it can be used in connection setup
-  const handleMessage = useCallback((data) => {
-    console.log('📨 Received:', data.type);
-    
-    switch (data.type) {
-      case 'game-settings':
-        console.log('Setting difficulty to:', data.difficulty);
-        setDifficulty(data.difficulty);
-        break;
-        
-      case 'setup-complete':
-        const isHost = gameModeRef.current === 'online-host';
-        if (isHost) {
-          setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
-          setPlayer2SetupComplete(true);
-        } else {
-          setPlayer1(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
-          setPlayer1SetupComplete(true);
-        }
-        setOpponentSetupReceived(true);
-        if (waitingRef.current) {
-          setWaitingForOpponent(false);
-          setGamePhase('battle');
-        }
-        break;
-        
-      case 'shot':
-        handleIncomingShot(data);
-        break;
-        
-      case 'shot-result':
-        handleShotResult(data);
-        break;
-      
-      case 'answer-selected':
-        setSelectedAnswer(data.answerIndex);
-        break;
-      
-      case 'question-answered':
-        setAnswerResult(data.correct);
-        setTimeout(() => {
-          setWaitingForOpponent(false);
-          setIsWatchingQuestion(false);
-          setCurrentQuestion(null);
-          setSelectedAnswer(null);
-          setAnswerResult(null);
-          setShotResults([]);
-          setExtraTurn(false);
-          setSunkShip(null);
-          if (data.correct && data.gotHit) {
-            setIsMyTurn(false);
-          } else {
-            setIsMyTurn(true);
-          }
-          setGamePhase('battle');
-        }, 1500);
-        break;
-      
-      case 'question-retry':
-        setSelectedAnswer(null);
-        setAnswerResult(null);
-        break;
-      
-      case 'new-question':
-        setCurrentQuestion(data.question);
-        setSelectedAnswer(null);
-        setAnswerResult(null);
-        break;
-        
-      case 'game-over':
-        setWinner(data.winner);
-        setGamePhase('gameover');
-        break;
-        
-      case 'airdrop-spawned':
-        const isHost2 = gameModeRef.current === 'online-host';
-        if (isHost2) {
-          setPlayer2(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
-        } else {
-          setPlayer1(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
-        }
-        break;
-    }
-  }, []);
-
-  // Send message helper
-  const sendMessage = useCallback((message) => {
+  // Send message
+  const sendMsg = useCallback((msg) => {
     if (connRef.current && connRef.current.open) {
-      console.log('📤 Sending:', message.type);
-      connRef.current.send(message);
-    } else {
-      console.warn('Cannot send - connection not open');
+      connRef.current.send(msg);
+      return true;
+    }
+    return false;
+  }, []);
+
+  // Handle incoming messages
+  const onMessage = useCallback((data) => {
+    console.log('MSG:', data.type);
+    const isHost = gameModeRef.current === 'online-host';
+
+    if (data.type === 'settings') {
+      setDifficulty(data.difficulty);
+      setGamePhase('setup');
+    }
+    else if (data.type === 'setup-complete') {
+      if (isHost) {
+        setPlayer2(p => ({ ...p, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
+      } else {
+        setPlayer1(p => ({ ...p, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
+      }
+      setOpponentSetupReceived(true);
+      if (waitingRef.current) {
+        setWaitingForOpponent(false);
+        setGamePhase('battle');
+      }
+    }
+    else if (data.type === 'shot') {
+      handleIncomingShot(data);
+    }
+    else if (data.type === 'shot-result') {
+      handleShotResult(data);
+    }
+    else if (data.type === 'answer-selected') {
+      setSelectedAnswer(data.idx);
+    }
+    else if (data.type === 'question-answered') {
+      setAnswerResult(data.correct);
+      setTimeout(() => {
+        setWaitingForOpponent(false);
+        setIsWatchingQuestion(false);
+        setCurrentQuestion(null);
+        setSelectedAnswer(null);
+        setAnswerResult(null);
+        setShotResults([]);
+        setExtraTurn(false);
+        setSunkShip(null);
+        setIsMyTurn(data.correct && data.gotHit ? false : true);
+        setGamePhase('battle');
+      }, 1500);
+    }
+    else if (data.type === 'question-retry') {
+      setSelectedAnswer(null);
+      setAnswerResult(null);
+    }
+    else if (data.type === 'new-question') {
+      setCurrentQuestion(data.question);
+      setSelectedAnswer(null);
+      setAnswerResult(null);
+    }
+    else if (data.type === 'game-over') {
+      setWinner(data.winner);
+      setGamePhase('gameover');
     }
   }, []);
 
-  // Initialize as HOST
-  const hostGame = useCallback(() => {
-    setGameMode('online-host');
-    setConnectionStatus('Creating game...');
-    
-    const peer = new Peer();
-    peerRef.current = peer;
-    
-    peer.on('open', (id) => {
-      console.log('🎮 Host ready with ID:', id);
-      setPeerId(id);
-      setConnectionStatus('Waiting for opponent...');
-      setIsMyTurn(true); // Host goes first
-    });
-    
-    peer.on('connection', (conn) => {
-      console.log('👋 Opponent connecting...');
-      connRef.current = conn;
+  // Setup connection handlers
+  const setupConn = useCallback((conn, isHost) => {
+    conn.on('open', () => {
+      console.log('Connection OPEN');
+      setConnected(true);
+      setStatusMsg('Connected!');
       
-      conn.on('open', () => {
-        console.log('✅ Connection established (host side)');
-        setIsConnected(true);
-        setConnectionStatus('Connected!');
-        
-        // Send game settings to joiner
+      if (isHost) {
+        // Host sends settings then moves to setup
         setTimeout(() => {
-          conn.send({ type: 'game-settings', difficulty: difficultyRef.current });
-          console.log('📤 Sent difficulty:', difficultyRef.current);
-          
-          // Move to setup after a brief delay
-          setTimeout(() => setGamePhase('setup'), 500);
-        }, 100);
-      });
-      
-      conn.on('data', handleMessage);
-      
-      conn.on('close', () => {
-        console.log('Connection closed');
-        setIsConnected(false);
-        setConnectionStatus('Opponent disconnected');
-      });
-      
-      conn.on('error', (err) => {
-        console.error('Connection error:', err);
-        setConnectionStatus('Connection error');
-      });
+          conn.send({ type: 'settings', difficulty: difficultyRef.current });
+          setGamePhase('setup');
+        }, 300);
+      }
+      // Joiner waits for settings message to move to setup
     });
-    
-    peer.on('error', (err) => {
-      console.error('Peer error:', err);
-      setConnectionStatus('Error: ' + err.type);
-    });
-  }, [handleMessage]);
 
-  // Initialize as JOINER
-  const joinGame = useCallback(() => {
-    setGameMode('online-joiner');
-    setConnectionStatus('Initializing...');
-    
-    const peer = new Peer();
-    peerRef.current = peer;
-    
-    peer.on('open', (id) => {
-      console.log('🎮 Joiner ready with ID:', id);
-      setPeerId(id);
-      setConnectionStatus('Ready to connect');
-      setIsMyTurn(false); // Joiner goes second
-    });
-    
-    peer.on('error', (err) => {
-      console.error('Peer error:', err);
-      setConnectionStatus('Error: ' + err.type);
-    });
-  }, []);
+    conn.on('data', onMessage);
 
-  // Connect to host (joiner only)
-  const connectToHost = useCallback(() => {
-    if (!peerRef.current || !remotePeerId.trim()) {
-      setConnectionStatus('Enter a valid game code');
+    conn.on('close', () => {
+      console.log('Connection CLOSED');
+      setConnected(false);
+      setStatusMsg('Connection lost!');
+    });
+
+    conn.on('error', (err) => {
+      console.error('Conn error:', err);
+      setStatusMsg('Connection error!');
+    });
+  }, [onMessage]);
+
+  // HOST: Create peer and wait for connection
+  const startHost = useCallback(() => {
+    if (!window.Peer) {
+      setStatusMsg('Error: PeerJS not loaded!');
       return;
     }
-    
-    setConnectionStatus('Connecting...');
-    console.log('🔗 Connecting to:', remotePeerId.trim());
-    
-    const conn = peerRef.current.connect(remotePeerId.trim(), { reliable: true });
+
+    setGameMode('online-host');
+    setStatusMsg('Creating game...');
+    setIsMyTurn(true);
+
+    const peer = new Peer();
+    peerRef.current = peer;
+
+    peer.on('open', (id) => {
+      console.log('Host peer open:', id);
+      setMyPeerId(id);
+      setPeerReady(true);
+      setStatusMsg('Share code with opponent');
+    });
+
+    peer.on('connection', (conn) => {
+      console.log('Incoming connection!');
+      connRef.current = conn;
+      setStatusMsg('Opponent connecting...');
+      setupConn(conn, true);
+    });
+
+    peer.on('error', (err) => {
+      console.error('Peer error:', err);
+      setStatusMsg('Error: ' + err.type);
+    });
+  }, [setupConn]);
+
+  // JOINER: Create peer
+  const startJoin = useCallback(() => {
+    if (!window.Peer) {
+      setStatusMsg('Error: PeerJS not loaded!');
+      return;
+    }
+
+    setGameMode('online-joiner');
+    setStatusMsg('Initializing...');
+    setIsMyTurn(false);
+
+    const peer = new Peer();
+    peerRef.current = peer;
+
+    peer.on('open', (id) => {
+      console.log('Joiner peer open:', id);
+      setMyPeerId(id);
+      setPeerReady(true);
+      setStatusMsg('Enter host code and connect');
+    });
+
+    peer.on('error', (err) => {
+      console.error('Peer error:', err);
+      setStatusMsg('Error: ' + err.type);
+    });
+  }, []);
+
+  // JOINER: Connect to host
+  const doConnect = useCallback(() => {
+    const code = hostCode.trim();
+    if (!code) {
+      setStatusMsg('Enter the host code first!');
+      return;
+    }
+    if (!peerRef.current) {
+      setStatusMsg('Peer not ready - wait a moment');
+      return;
+    }
+    if (!peerReady) {
+      setStatusMsg('Still initializing - wait...');
+      return;
+    }
+
+    setStatusMsg('Connecting to ' + code.substring(0, 8) + '...');
+
+    const conn = peerRef.current.connect(code, { reliable: true });
     connRef.current = conn;
-    
-    conn.on('open', () => {
-      console.log('✅ Connection established (joiner side)');
-      setIsConnected(true);
-      setConnectionStatus('Connected! Waiting for game settings...');
-    });
-    
-    conn.on('data', (data) => {
-      handleMessage(data);
-      // If we receive game-settings, move to setup
-      if (data.type === 'game-settings') {
-        setTimeout(() => setGamePhase('setup'), 500);
-      }
-    });
-    
-    conn.on('close', () => {
-      console.log('Connection closed');
-      setIsConnected(false);
-      setConnectionStatus('Host disconnected');
-    });
-    
-    conn.on('error', (err) => {
-      console.error('Connection error:', err);
-      setConnectionStatus('Failed to connect - check the code');
-    });
-  }, [remotePeerId, handleMessage]);
+    setupConn(conn, false);
+  }, [hostCode, peerReady, setupConn]);
+
+  // Go back to menu
+  const goBack = useCallback(() => {
+    if (peerRef.current) {
+      peerRef.current.destroy();
+      peerRef.current = null;
+    }
+    connRef.current = null;
+    setGameMode(null);
+    setMyPeerId('');
+    setHostCode('');
+    setPeerReady(false);
+    setConnected(false);
+    setStatusMsg('');
+  }, []);
 
   // Handle incoming shot
   const handleIncomingShot = (data) => {
@@ -464,80 +381,56 @@ function BattleshipESL() {
     const pattern = weapon === 'rain' ? generateRainPattern() : WEAPONS[weapon].pattern;
     const results = [];
     let gotHit = false;
-    
+
     setWaitingForOpponent(false);
-    
+
     const myPlayer = isHost ? player1Ref.current : player2Ref.current;
     const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
-    
+
     const newReceived = myPlayer.received.map(r => [...r]);
     let shipsRemaining = myPlayer.shipsRemaining;
     let sunkShipName = null;
-    const myShips = myPlayer.ships.map(s => ({...s, cells: [...s.cells]}));
+    const myShips = myPlayer.ships.map(s => ({ ...s, cells: [...s.cells] }));
     const myGifts = [...(myPlayer.gifts || [])];
     let collectedGift = null;
 
     const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]);
-    
+
     targetCells.forEach(([r, c]) => {
-      if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-        if (newReceived[r][c] === null) {
-          const cell = myPlayer.grid[r][c];
-          
-          const giftIndex = myGifts.findIndex(g => g.row === r && g.col === c);
-          if (giftIndex !== -1 && !collectedGift) {
-            collectedGift = myGifts[giftIndex];
-            myGifts.splice(giftIndex, 1);
+      if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && newReceived[r][c] === null) {
+        const cell = myPlayer.grid[r][c];
+        const giftIdx = myGifts.findIndex(g => g.row === r && g.col === c);
+        if (giftIdx !== -1 && !collectedGift) {
+          collectedGift = myGifts[giftIdx];
+          myGifts.splice(giftIdx, 1);
+        }
+        if (cell && cell.ship !== undefined) {
+          newReceived[r][c] = 'hit';
+          gotHit = true;
+          results.push({ row: r, col: c, result: 'hit' });
+          const ship = myShips[cell.ship];
+          if (ship.cells.every(([sr, sc]) => newReceived[sr][sc] === 'hit') && !ship.sunk) {
+            ship.sunk = true;
+            shipsRemaining--;
+            sunkShipName = SHIPS[cell.ship].name;
           }
-          
-          if (cell && cell.ship !== undefined) {
-            newReceived[r][c] = 'hit';
-            gotHit = true;
-            results.push({ row: r, col: c, result: 'hit' });
-            
-            const ship = myShips[cell.ship];
-            const allHit = ship.cells.every(([sr, sc]) => newReceived[sr][sc] === 'hit');
-            if (allHit && !ship.sunk) {
-              ship.sunk = true;
-              shipsRemaining--;
-              sunkShipName = SHIPS[cell.ship].name;
-            }
-          } else {
-            newReceived[r][c] = 'miss';
-            results.push({ row: r, col: c, result: 'miss' });
-          }
+        } else {
+          newReceived[r][c] = 'miss';
+          results.push({ row: r, col: c, result: 'miss' });
         }
       }
     });
 
     setIncomingShot({ results, gotHit, sunkShip: sunkShipName });
     setShowIncomingAnimation(true);
-
-    setMyPlayer(prev => ({
-      ...prev,
-      received: newReceived,
-      shipsRemaining,
-      ships: myShips,
-      gifts: myGifts
-    }));
+    setMyPlayer(p => ({ ...p, received: newReceived, shipsRemaining, ships: myShips, gifts: myGifts }));
 
     const question = shipsRemaining > 0 ? getRandomQuestion(difficultyRef.current) : null;
-
-    sendMessage({
-      type: 'shot-result',
-      results,
-      gotHit,
-      sunkShip: sunkShipName,
-      shipsRemaining,
-      gameOver: shipsRemaining === 0,
-      question,
-      collectedGift
-    });
+    sendMsg({ type: 'shot-result', results, gotHit, sunkShip: sunkShipName, shipsRemaining, gameOver: shipsRemaining === 0, question, collectedGift });
 
     setTimeout(() => {
       setShowIncomingAnimation(false);
       setIncomingShot(null);
-      
       if (shipsRemaining === 0) {
         setWinner(isHost ? 2 : 1);
         setGamePhase('gameover');
@@ -549,28 +442,21 @@ function BattleshipESL() {
     }, 2000);
   };
 
-  // Handle shot result
   const handleShotResult = (data) => {
     const isHost = gameModeRef.current === 'online-host';
     setWaitingForOpponent(false);
     setShotResults(data.results);
-    
     const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
-    
-    setMyPlayer(prev => {
-      const newTracking = prev.tracking.map(r => [...r]);
-      data.results.forEach(({ row, col, result }) => {
-        newTracking[row][col] = result;
-      });
-      const newWeapons = { ...prev.weapons };
-      if (data.collectedGift) {
-        newWeapons[data.collectedGift.weapon] = (newWeapons[data.collectedGift.weapon] || 0) + 1;
-      }
-      return { ...prev, tracking: newTracking, weapons: newWeapons };
+
+    setMyPlayer(p => {
+      const newTracking = p.tracking.map(r => [...r]);
+      data.results.forEach(({ row, col, result }) => { newTracking[row][col] = result; });
+      const newWeapons = { ...p.weapons };
+      if (data.collectedGift) newWeapons[data.collectedGift.weapon] = (newWeapons[data.collectedGift.weapon] || 0) + 1;
+      return { ...p, tracking: newTracking, weapons: newWeapons };
     });
 
     if (data.sunkShip) setSunkShip(data.sunkShip);
-    
     if (data.gameOver) {
       setWinner(isHost ? 1 : 2);
       setGamePhase('gameover');
@@ -582,30 +468,12 @@ function BattleshipESL() {
     }
   };
 
-  // Ship Placement
-  const canPlaceShip = (grid, row, col, size, horizontal) => {
+  // Ship placement
+  const canPlaceShip = (grid, row, col, size, horiz) => {
     for (let i = 0; i < size; i++) {
-      const r = horizontal ? row : row + i;
-      const c = horizontal ? col + i : col;
+      const r = horiz ? row : row + i;
+      const c = horiz ? col + i : col;
       if (r >= GRID_SIZE || c >= GRID_SIZE || grid[r][c] !== null) return false;
-    }
-    return true;
-  };
-
-  const checkMinimumSeparation = (grid, row, col, size, horizontal) => {
-    for (let i = 0; i < size; i++) {
-      const r = horizontal ? row : row + i;
-      const c = horizontal ? col + i : col;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const checkR = r + dr;
-          const checkC = c + dc;
-          if (checkR >= 0 && checkR < GRID_SIZE && checkC >= 0 && checkC < GRID_SIZE) {
-            if (grid[checkR][checkC] !== null) return false;
-          }
-        }
-      }
     }
     return true;
   };
@@ -616,9 +484,9 @@ function BattleshipESL() {
     const isHost = gameMode === 'online-host';
     const currentGrid = isHost ? player1.grid : player2.grid;
     const grid = currentGrid.map(r => [...r]);
-    
+
     if (!canPlaceShip(grid, row, col, ship.size, isHorizontal)) return;
-    
+
     const shipCells = [];
     for (let i = 0; i < ship.size; i++) {
       const r = isHorizontal ? row : row + i;
@@ -626,46 +494,19 @@ function BattleshipESL() {
       grid[r][c] = { ship: currentShipIndex, part: i };
       shipCells.push([r, c]);
     }
-    
+
     const newShip = { ...ship, cells: shipCells, sunk: false };
     const newPlacedShips = [...placedShips, newShip];
     setPlacedShips(newPlacedShips);
-    
-    if (isHost) {
-      setPlayer1(prev => ({ ...prev, grid, ships: newPlacedShips }));
-    } else {
-      setPlayer2(prev => ({ ...prev, grid, ships: newPlacedShips }));
-    }
-    
-    if (currentShipIndex < SHIPS.length - 1) {
-      setCurrentShipIndex(currentShipIndex + 1);
-    } else {
-      completeSetup(grid, newPlacedShips);
-    }
+
+    if (isHost) setPlayer1(p => ({ ...p, grid, ships: newPlacedShips }));
+    else setPlayer2(p => ({ ...p, grid, ships: newPlacedShips }));
+
+    if (currentShipIndex < SHIPS.length - 1) setCurrentShipIndex(currentShipIndex + 1);
+    else completeSetup(grid, newPlacedShips);
   };
 
   const completeSetup = (grid, ships) => {
-    const gifts = spawnInitialGifts(grid, 2);
-    const isHost = gameMode === 'online-host';
-    
-    if (isHost) {
-      setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
-      setPlayer1SetupComplete(true);
-    } else {
-      setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
-      setPlayer2SetupComplete(true);
-    }
-    
-    sendMessage({ type: 'setup-complete', grid, ships, gifts });
-    
-    if (opponentSetupReceived) {
-      setGamePhase('battle');
-    } else {
-      setWaitingForOpponent(true);
-    }
-  };
-
-  const spawnInitialGifts = (grid, count) => {
     const gifts = [];
     const emptyCells = [];
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -673,203 +514,97 @@ function BattleshipESL() {
         if (grid[r][c] === null) emptyCells.push([r, c]);
       }
     }
-    for (let i = 0; i < Math.min(count, emptyCells.length); i++) {
+    for (let i = 0; i < 2 && emptyCells.length > 0; i++) {
       const idx = Math.floor(Math.random() * emptyCells.length);
       const [r, c] = emptyCells.splice(idx, 1)[0];
-      const weaponTypes = ['big', 'rain', 'nuclear'];
-      const weaponType = weaponTypes[Math.floor(Math.random() * weaponTypes.length)];
-      gifts.push({ row: r, col: c, weapon: weaponType });
+      const types = ['big', 'rain', 'nuclear'];
+      gifts.push({ row: r, col: c, weapon: types[Math.floor(Math.random() * types.length)] });
     }
-    return gifts;
-  };
 
-  const checkAndSpawnAirdrop = useCallback(() => {
-    if (totalAirdrops >= AIRDROP_CONFIG.maxAirdropsPerGame) return;
-    
-    const isHost = gameModeRef.current === 'online-host';
-    const myPlayer = isHost ? player1Ref.current : player2Ref.current;
-    const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
-    
-    let currentChance = AIRDROP_CONFIG.baseChance;
-    if (airdropsSinceLastSpawn >= AIRDROP_CONFIG.droughtThreshold) {
-      currentChance = Math.min(
-        AIRDROP_CONFIG.maxChance,
-        AIRDROP_CONFIG.baseChance + (airdropsSinceLastSpawn - AIRDROP_CONFIG.droughtThreshold + 1) * AIRDROP_CONFIG.chanceIncrement
-      );
-    }
-    
-    if (Math.random() < currentChance) {
-      const grid = myPlayer.grid;
-      const received = myPlayer.received;
-      const existingGifts = myPlayer.gifts || [];
-      
-      const emptyCells = [];
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          if (grid[r][c] === null && received[r][c] === null && !existingGifts.some(g => g.row === r && g.col === c)) {
-            emptyCells.push([r, c]);
-          }
-        }
-      }
-      
-      if (emptyCells.length > 0) {
-        const [r, c] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        const weaponTypes = ['big', 'rain', 'nuclear'];
-        const weaponWeights = [0.5, 0.35, 0.15];
-        let weightRoll = Math.random();
-        let weaponType = 'big';
-        for (let i = 0; i < weaponTypes.length; i++) {
-          if (weightRoll < weaponWeights[i]) {
-            weaponType = weaponTypes[i];
-            break;
-          }
-          weightRoll -= weaponWeights[i];
-        }
-        
-        const newGift = { row: r, col: c, weapon: weaponType };
-        
-        setMyPlayer(prev => ({ ...prev, gifts: [...(prev.gifts || []), newGift] }));
-        sendMessage({ type: 'airdrop-spawned', gift: newGift });
-        
-        setTotalAirdrops(prev => prev + 1);
-        setAirdropsSinceLastSpawn(0);
-        setNewAirdropMessage(`🎁 Airdrop! (${WEAPONS[weaponType].icon} ${WEAPONS[weaponType].name})`);
-        setTimeout(() => setNewAirdropMessage(null), 3000);
-      }
-    } else {
-      setAirdropsSinceLastSpawn(prev => prev + 1);
-    }
-  }, [totalAirdrops, airdropsSinceLastSpawn, sendMessage]);
+    const isHost = gameMode === 'online-host';
+    if (isHost) setPlayer1(p => ({ ...p, grid, ships, gifts }));
+    else setPlayer2(p => ({ ...p, grid, ships, gifts }));
+
+    sendMsg({ type: 'setup-complete', grid, ships, gifts });
+
+    if (opponentSetupReceived) setGamePhase('battle');
+    else setWaitingForOpponent(true);
+  };
 
   const randomPlaceShips = () => {
     const grid = createEmptyGrid();
     const ships = [];
-    
+
     for (let i = 0; i < SHIPS.length; i++) {
       const ship = SHIPS[i];
       let placed = false, attempts = 0;
-      
-      while (!placed && attempts < 200) {
-        const horizontal = Math.random() > 0.5;
+      while (!placed && attempts < 500) {
+        const horiz = Math.random() > 0.5;
         const row = Math.floor(Math.random() * GRID_SIZE);
         const col = Math.floor(Math.random() * GRID_SIZE);
-        
-        if (canPlaceShip(grid, row, col, ship.size, horizontal) && 
-            checkMinimumSeparation(grid, row, col, ship.size, horizontal)) {
-          const shipCells = [];
+        if (canPlaceShip(grid, row, col, ship.size, horiz)) {
+          const cells = [];
           for (let j = 0; j < ship.size; j++) {
-            const r = horizontal ? row : row + j;
-            const c = horizontal ? col + j : col;
+            const r = horiz ? row : row + j;
+            const c = horiz ? col + j : col;
             grid[r][c] = { ship: i, part: j };
-            shipCells.push([r, c]);
+            cells.push([r, c]);
           }
-          ships.push({ ...ship, cells: shipCells, sunk: false });
+          ships.push({ ...ship, cells, sunk: false });
           placed = true;
         }
         attempts++;
       }
-      
-      // Fallback without separation requirement
-      if (!placed) {
-        attempts = 0;
-        while (!placed && attempts < 100) {
-          const horizontal = Math.random() > 0.5;
-          const row = Math.floor(Math.random() * GRID_SIZE);
-          const col = Math.floor(Math.random() * GRID_SIZE);
-          if (canPlaceShip(grid, row, col, ship.size, horizontal)) {
-            const shipCells = [];
-            for (let j = 0; j < ship.size; j++) {
-              const r = horizontal ? row : row + j;
-              const c = horizontal ? col + j : col;
-              grid[r][c] = { ship: i, part: j };
-              shipCells.push([r, c]);
-            }
-            ships.push({ ...ship, cells: shipCells, sunk: false });
-            placed = true;
-          }
-          attempts++;
-        }
-      }
     }
-    
+
     const isHost = gameMode === 'online-host';
-    if (isHost) {
-      setPlayer1(prev => ({ ...prev, grid, ships }));
-    } else {
-      setPlayer2(prev => ({ ...prev, grid, ships }));
-    }
-    
+    if (isHost) setPlayer1(p => ({ ...p, grid, ships }));
+    else setPlayer2(p => ({ ...p, grid, ships }));
     completeSetup(grid, ships);
   };
 
   const fireWeapon = (row, col) => {
-    if (!isMyTurn) return;
-    
+    if (!isMyTurn || showFiringAnimation) return;
     const isHost = gameMode === 'online-host';
     const attacker = isHost ? player1 : player2;
-    const weapon = WEAPONS[selectedWeapon];
-    
     if (selectedWeapon !== 'simple' && attacker.weapons[selectedWeapon] <= 0) return;
-    
-    const attackerTracking = isHost ? player1.tracking : player2.tracking;
-    if (attackerTracking[row][col] !== null) return;
-    
-    const pattern = selectedWeapon === 'rain' ? generateRainPattern() : weapon.pattern;
-    const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]).filter(
-      ([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE
-    );
-    
-    setFiringAnimation({ weapon: selectedWeapon, targets: targetCells, phase: 'launch' });
+    const tracking = isHost ? player1.tracking : player2.tracking;
+    if (tracking[row][col] !== null) return;
+
+    const pattern = selectedWeapon === 'rain' ? generateRainPattern() : WEAPONS[selectedWeapon].pattern;
+    const targets = pattern.map(([dx, dy]) => [row + dx, col + dy]).filter(([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE);
+
+    setFiringAnimation({ weapon: selectedWeapon, targets, phase: 'launch' });
     setShowFiringAnimation(true);
-    
-    setTimeout(() => setFiringAnimation(prev => ({ ...prev, phase: 'travel' })), 300);
-    setTimeout(() => setFiringAnimation(prev => ({ ...prev, phase: 'impact' })), 800);
-    
+    setTimeout(() => setFiringAnimation(p => ({ ...p, phase: 'travel' })), 300);
+    setTimeout(() => setFiringAnimation(p => ({ ...p, phase: 'impact' })), 800);
+
     setTimeout(() => {
       setShowFiringAnimation(false);
       setFiringAnimation(null);
-      
-      setTurnCount(prev => {
-        const newCount = prev + 1;
-        if (newCount % AIRDROP_CONFIG.checkIntervalTurns === 0) {
-          setTimeout(() => checkAndSpawnAirdrop(), 100);
-        }
-        return newCount;
-      });
-      
-      sendMessage({ type: 'shot', row, col, weapon: selectedWeapon });
+      setTurnCount(t => t + 1);
+      sendMsg({ type: 'shot', row, col, weapon: selectedWeapon });
       setIsMyTurn(false);
       setWaitingForOpponent(true);
-      
+
       if (selectedWeapon !== 'simple') {
-        const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
-        setMyPlayer(prev => ({
-          ...prev,
-          weapons: { ...prev.weapons, [selectedWeapon]: prev.weapons[selectedWeapon] - 1 }
-        }));
+        const setP = isHost ? setPlayer1 : setPlayer2;
+        setP(p => ({ ...p, weapons: { ...p.weapons, [selectedWeapon]: p.weapons[selectedWeapon] - 1 } }));
       }
     }, 1300);
   };
 
-  const handleAnswer = (index) => {
+  const handleAnswer = (idx) => {
     if (isWatchingQuestion) return;
-    
-    setSelectedAnswer(index);
-    const correct = index === currentQuestion.answer;
+    setSelectedAnswer(idx);
+    const correct = idx === currentQuestion.answer;
     setAnswerResult(correct);
-
-    sendMessage({ type: 'answer-selected', answerIndex: index });
+    sendMsg({ type: 'answer-selected', idx });
 
     setTimeout(() => {
       if (correct) {
-        sendMessage({ type: 'question-answered', correct: true, gotHit: extraTurn });
-        
-        if (extraTurn) {
-          setIsMyTurn(true);
-        } else {
-          setIsMyTurn(false);
-        }
-        
+        sendMsg({ type: 'question-answered', correct: true, gotHit: extraTurn });
+        setIsMyTurn(extraTurn);
         setCurrentQuestion(null);
         setSelectedAnswer(null);
         setAnswerResult(null);
@@ -879,91 +614,56 @@ function BattleshipESL() {
         setIsWatchingQuestion(false);
         setGamePhase('battle');
       } else {
-        sendMessage({ type: 'question-retry' });
-        const newQuestion = getRandomQuestion(difficulty);
-        setCurrentQuestion(newQuestion);
+        sendMsg({ type: 'question-retry' });
+        const newQ = getRandomQuestion(difficulty);
+        setCurrentQuestion(newQ);
         setSelectedAnswer(null);
         setAnswerResult(null);
-        sendMessage({ type: 'new-question', question: newQuestion });
+        sendMsg({ type: 'new-question', question: newQ });
       }
     }, 1500);
   };
 
-  // Render cell
-  const renderCell = (row, col, isOwnGrid, playerData, isSetup = false, trackingData = null) => {
+  const renderCell = (row, col, isOwn, playerData, isSetup = false, trackingData = null) => {
     const cell = playerData.grid[row][col];
-    const hitData = isOwnGrid ? playerData.received : trackingData;
+    const hitData = isOwn ? playerData.received : trackingData;
     const hit = hitData ? hitData[row][col] : null;
     const gift = playerData.gifts?.find(g => g.row === row && g.col === col);
-    
-    const hasIncomingHit = showIncomingAnimation && incomingShot && 
-      incomingShot.results.some(r => r.row === row && r.col === col);
-    const incomingResult = hasIncomingHit ? 
-      incomingShot.results.find(r => r.row === row && r.col === col)?.result : null;
-    
-    const isFiringTarget = showFiringAnimation && firingAnimation && 
-      firingAnimation.targets.some(([r, c]) => r === row && c === col);
-    
-    let className = 'cell';
+    const hasIncoming = showIncomingAnimation && incomingShot?.results.some(r => r.row === row && r.col === col);
+    const incomingRes = hasIncoming ? incomingShot.results.find(r => r.row === row && r.col === col)?.result : null;
+    const isFiring = showFiringAnimation && firingAnimation?.targets.some(([r, c]) => r === row && c === col);
+
+    let cls = 'cell';
     let content = '';
 
-    if (isOwnGrid) {
-      if (cell && cell.ship !== undefined) {
-        className += ' ship';
-        const shipColor = SHIPS[cell.ship].color;
+    if (isOwn) {
+      if (cell?.ship !== undefined) {
         return (
-          <div key={`${row}-${col}`} className={`${className} ${hasIncomingHit ? 'incoming-shot' : ''}`} style={{ backgroundColor: shipColor }}>
-            {(hit === 'hit' || incomingResult === 'hit') && <span className="hit-marker">🔥</span>}
-            {hasIncomingHit && incomingResult === 'hit' && <span className="explosion-anim">💥</span>}
-            {gift && <span className="gift">🎁</span>}
+          <div key={`${row}-${col}`} className={`cell ship ${hasIncoming ? 'incoming' : ''}`} style={{ backgroundColor: SHIPS[cell.ship].color }}>
+            {(hit === 'hit' || incomingRes === 'hit') && '🔥'}
+            {gift && '🎁'}
           </div>
         );
       }
-      if (hit === 'miss' || incomingResult === 'miss') {
-        className += ' miss';
-        content = '💨';
-        if (hasIncomingHit) className += ' splash-anim';
-      }
+      if (hit === 'miss' || incomingRes === 'miss') { cls += ' miss'; content = '💨'; }
       if (gift && !hit) content = '🎁';
     } else {
-      if (hit === 'hit') {
-        className += ' hit';
-        content = '💥';
-      } else if (hit === 'miss') {
-        className += ' miss';
-        content = '💨';
-      } else if (gift) {
-        className += ' enemy gift-cell';
-        content = '🎁';
-      } else {
-        className += ' enemy';
-      }
-      
-      if (isFiringTarget) {
-        className += ` firing-target firing-${firingAnimation.phase}`;
-      }
+      if (hit === 'hit') { cls += ' hit'; content = '💥'; }
+      else if (hit === 'miss') { cls += ' miss'; content = '💨'; }
+      else if (gift) { cls += ' enemy gift-cell'; content = '🎁'; }
+      else cls += ' enemy';
+      if (isFiring) cls += ` firing-${firingAnimation.phase}`;
     }
 
-    const handleClick = () => {
+    const onClick = () => {
       if (isSetup) placeShip(row, col);
-      else if (!isOwnGrid && hit === null && gamePhase === 'battle' && isMyTurn && !showFiringAnimation) {
-        fireWeapon(row, col);
-      }
+      else if (!isOwn && !hit && gamePhase === 'battle' && isMyTurn && !showFiringAnimation) fireWeapon(row, col);
     };
 
-    return (
-      <div key={`${row}-${col}`} className={className} onClick={handleClick}>
-        {content}
-        {isFiringTarget && firingAnimation.phase === 'impact' && (
-          <span className="impact-anim">
-            {firingAnimation.weapon === 'nuclear' ? '☢️' : firingAnimation.weapon === 'big' ? '💣' : '🎯'}
-          </span>
-        )}
-      </div>
-    );
+    return <div key={`${row}-${col}`} className={cls} onClick={onClick}>{content}</div>;
   };
 
-  const renderGrid = (isOwnGrid, playerData, isSetup = false, trackingData = null) => (
+  const renderGrid = (isOwn, playerData, isSetup = false, trackingData = null) => (
     <div className="grid-wrapper">
       <div className="grid-labels-top">
         <div className="corner"></div>
@@ -975,542 +675,237 @@ function BattleshipESL() {
         </div>
         <div className="grid">
           {Array.from({ length: GRID_SIZE }, (_, row) =>
-            Array.from({ length: GRID_SIZE }, (_, col) =>
-              renderCell(row, col, isOwnGrid, playerData, isSetup, trackingData)
-            )
+            Array.from({ length: GRID_SIZE }, (_, col) => renderCell(row, col, isOwn, playerData, isSetup, trackingData))
           )}
         </div>
       </div>
     </div>
   );
 
-  const getDifficultyHint = () => {
-    switch(difficulty) {
-      case 'easy': return 'Basic: be verbs, simple present, articles';
-      case 'medium': return 'Intermediate: perfect tenses, conditionals';
-      case 'hard': return 'Advanced: inversion, subjunctive';
-      default: return '';
-    }
-  };
-
-  // Styles
-  const styles = `
-    .game-container {
-      min-height: 100vh;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      color: white;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .header { text-align: center; margin-bottom: 20px; width: 100%; }
-    .title {
-      font-size: 2.5rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #00d9ff, #00ff88);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 3px;
-    }
-    .subtitle { color: #8892b0; font-size: 1rem; margin-top: 5px; }
-    
-    .menu-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex: 1;
-      width: 100%;
-      min-height: 60vh;
-    }
-    .menu-panel {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 40px;
-      width: 100%;
-      max-width: 450px;
-    }
-    .menu-title { text-align: center; font-size: 1.5rem; margin-bottom: 30px; color: #00d9ff; }
-    
-    .menu-btn {
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      transition: all 0.3s;
-      background: linear-gradient(135deg, #334155, #1e293b);
-      color: white;
-    }
-    .menu-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3); }
-    .menu-btn.primary {
-      background: linear-gradient(135deg, #00d9ff, #00ff88);
-      color: #1a1a2e;
-      font-weight: bold;
-    }
-    .menu-btn.back {
-      background: transparent;
-      border: 2px solid #334155;
-      margin-top: 20px;
-    }
-    
-    .connection-panel {
-      margin-top: 20px;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 10px;
-    }
-    .panel-title { font-size: 1.2rem; color: #00d9ff; margin-bottom: 15px; text-align: center; }
-    
-    .difficulty-selector { margin-bottom: 20px; }
-    .difficulty-label { display: block; text-align: center; margin-bottom: 10px; color: #8892b0; }
-    .difficulty-buttons { display: flex; gap: 10px; justify-content: center; }
-    .diff-btn {
-      padding: 10px 20px;
-      border: 2px solid #334155;
-      background: transparent;
-      color: white;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    .diff-btn:hover, .diff-btn.active {
-      border-color: #00d9ff;
-      background: rgba(0, 217, 255, 0.1);
-    }
-    .diff-btn.active { box-shadow: 0 0 15px rgba(0, 217, 255, 0.3); }
-    .difficulty-hint { text-align: center; font-size: 0.8rem; color: #6b7280; margin-top: 10px; font-style: italic; }
-    
-    .peer-id-display {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 15px;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 0.85rem;
-      word-break: break-all;
-      margin: 10px 0;
-      text-align: center;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: all 0.3s;
-    }
-    .peer-id-display:hover { border-color: #00d9ff; }
-    .peer-id-display.copied { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
-    .copy-hint { font-size: 0.75rem; color: #8892b0; margin-top: 5px; text-align: center; }
-    .copy-success { color: #00ff88; font-weight: bold; }
-    
-    .peer-input {
-      width: 100%;
-      padding: 15px;
-      border: 2px solid #334155;
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
-      font-size: 1rem;
-      margin: 10px 0;
-    }
-    .peer-input:focus { outline: none; border-color: #00d9ff; }
-    
-    .paste-input-wrapper { display: flex; gap: 10px; }
-    .paste-input-wrapper .peer-input { flex: 1; margin: 0; }
-    .paste-btn {
-      padding: 10px 15px;
-      border: 2px solid #00d9ff;
-      border-radius: 8px;
-      background: rgba(0, 217, 255, 0.2);
-      color: #00d9ff;
-      cursor: pointer;
-    }
-    .paste-btn:hover { background: #00d9ff; color: #0f172a; }
-    
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 15px;
-      padding: 10px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 8px;
-    }
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #ef4444;
-      animation: dotPulse 1.5s ease-in-out infinite;
-    }
-    .status-dot.connected { background: #22c55e; animation: none; box-shadow: 0 0 10px #22c55e; }
-    @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    
-    .setup-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 600px;
-    }
-    .setup-header { text-align: center; margin-bottom: 20px; width: 100%; }
-    .player-indicator { font-size: 1.5rem; font-weight: bold; color: #00d9ff; margin-bottom: 15px; }
-    .ship-to-place { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
-    .ship-preview { display: flex; gap: 2px; }
-    .ship-preview-cell { width: 25px; height: 25px; border-radius: 3px; }
-    .ship-name { font-weight: bold; color: white; }
-    .ship-size { font-size: 0.8rem; color: #8892b0; }
-    .setup-controls { display: flex; gap: 10px; justify-content: center; }
-    .control-btn {
-      padding: 8px 16px;
-      border: 2px solid #334155;
-      background: transparent;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .control-btn:hover, .control-btn.active { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
-    
-    .grid-wrapper { display: inline-block; }
-    .grid-labels-top { display: flex; }
-    .corner { width: 30px; height: 30px; }
-    .label { width: 35px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #8892b0; font-size: 0.8rem; }
-    .grid-body { display: flex; }
-    .grid-labels-side { display: flex; flex-direction: column; }
-    .grid-labels-side .label { width: 30px; height: 35px; }
-    .grid { display: grid; grid-template-columns: repeat(10, 35px); gap: 2px; background: rgba(0, 0, 0, 0.3); padding: 5px; border-radius: 10px; }
-    .cell {
-      width: 35px; height: 35px;
-      background: rgba(0, 100, 150, 0.3);
-      border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 1.2rem;
-      position: relative;
-    }
-    .cell:hover { background: rgba(0, 200, 255, 0.3); }
-    .cell.ship { cursor: default; }
-    .cell.enemy:hover { background: rgba(255, 100, 100, 0.4); }
-    .cell.hit { background: rgba(255, 100, 100, 0.6); }
-    .cell.miss { background: rgba(100, 100, 100, 0.4); }
-    .cell.gift-cell { background: rgba(255, 200, 0, 0.3); border: 2px solid #fbbf24; animation: giftPulse 2s ease-in-out infinite; }
-    @keyframes giftPulse { 0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.5); } 50% { box-shadow: 0 0 15px rgba(255, 200, 0, 0.8); } }
-    .hit-marker { font-size: 1rem; }
-    .gift { font-size: 0.9rem; }
-    
-    .cell.firing-target.firing-launch { background: rgba(255, 200, 0, 0.3); animation: targetLock 0.3s ease-out; }
-    .cell.firing-target.firing-travel { background: rgba(255, 150, 0, 0.5); animation: missileIncoming 0.5s ease-in; }
-    .cell.firing-target.firing-impact { background: rgba(255, 100, 0, 0.7); animation: explosion 0.5s ease-out; }
-    @keyframes targetLock { 0% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.8); } 100% { box-shadow: 0 0 20px 5px rgba(255, 200, 0, 0.4); } }
-    @keyframes missileIncoming { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-    @keyframes explosion { 0% { transform: scale(1); } 50% { transform: scale(1.3); box-shadow: 0 0 30px 10px rgba(255, 100, 0, 0.8); } 100% { transform: scale(1); } }
-    .impact-anim { position: absolute; font-size: 1.5rem; animation: impactBurst 0.5s ease-out forwards; z-index: 10; }
-    @keyframes impactBurst { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1.5); } 100% { transform: scale(2); opacity: 0; } }
-    
-    .cell.incoming-shot { animation: incoming-pulse 0.5s ease-in-out infinite; }
-    @keyframes incoming-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-    .explosion-anim { position: absolute; font-size: 1.5rem; animation: explode 0.5s ease-out forwards; }
-    @keyframes explode { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
-    .splash-anim { animation: splash 0.3s ease-out; }
-    @keyframes splash { 0% { transform: scale(0); } 100% { transform: scale(1); } }
-    
-    .battle-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; }
-    .battle-header { text-align: center; margin-bottom: 15px; width: 100%; }
-    .turn-indicator {
-      font-size: 1.3rem; font-weight: bold; color: #00ff88;
-      padding: 10px 20px;
-      background: rgba(0, 255, 136, 0.15);
-      border: 2px solid #00ff88;
-      border-radius: 10px;
-      display: inline-block;
-    }
-    .turn-indicator.waiting { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border-color: #fbbf24; animation: waitingPulse 2s ease-in-out infinite; }
-    @keyframes waitingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    .grids-container { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
-    .grid-section { text-align: center; display: flex; flex-direction: column; align-items: center; }
-    .grid-title { font-size: 1.1rem; margin-bottom: 8px; color: #00d9ff; font-weight: bold; }
-    .ships-status { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 10px; }
-    .ship-status { padding: 4px 8px; background: rgba(0, 150, 100, 0.3); border-radius: 4px; font-size: 0.7rem; }
-    .ship-status.sunk { background: rgba(200, 50, 50, 0.5); text-decoration: line-through; }
-    .weapons-panel { margin-top: 20px; text-align: center; width: 100%; }
-    .weapons-title { font-size: 1.1rem; margin-bottom: 10px; color: #00d9ff; }
-    .weapons-grid { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; max-width: 500px; margin: 0 auto; }
-    .weapon-btn {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 8px 12px;
-      border: 2px solid #334155;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-      min-width: 70px;
-    }
-    .weapon-btn:hover:not(:disabled) { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
-    .weapon-btn.selected { border-color: #00ff88; background: rgba(0, 255, 136, 0.2); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
-    .weapon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .weapon-icon { font-size: 1.3rem; margin-bottom: 5px; }
-    .weapon-name { font-size: 0.75rem; margin-bottom: 3px; }
-    .weapon-count { font-size: 0.8rem; color: #00d9ff; font-weight: bold; }
-    
-    .airdrop-notification {
-      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
-      background: linear-gradient(135deg, #fbbf24, #f59e0b);
-      color: #1a1a2e; padding: 12px 24px; border-radius: 10px;
-      font-weight: bold; z-index: 100;
-      animation: airdropSlide 3s ease-in-out forwards;
-    }
-    @keyframes airdropSlide { 0% { transform: translateX(-50%) translateY(-100%); opacity: 0; } 10% { transform: translateX(-50%) translateY(0); opacity: 1; } 80% { transform: translateX(-50%) translateY(0); opacity: 1; } 100% { transform: translateX(-50%) translateY(-100%); opacity: 0; } }
-    
-    .question-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
-    .question-modal {
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      border: 2px solid #00d9ff;
-      border-radius: 20px;
-      padding: 30px;
-      max-width: 500px;
-      width: 90%;
-      text-align: center;
-    }
-    .shot-result { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: rgba(100, 100, 100, 0.3); }
-    .shot-result.hit { background: rgba(255, 100, 100, 0.3); border: 1px solid #e74c3c; }
-    .shot-result-text { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
-    .sunk-announcement { color: #f39c12; font-weight: bold; margin-top: 10px; }
-    .extra-turn-notice { color: #00ff88; font-weight: bold; margin-top: 10px; }
-    .watching-indicator {
-      background: rgba(0, 217, 255, 0.2);
-      border: 2px solid #00d9ff;
-      border-radius: 10px;
-      padding: 15px; margin-bottom: 20px;
-      font-size: 1.2rem; color: #00d9ff;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-    .question-header { font-size: 1.2rem; color: #00d9ff; margin-bottom: 15px; }
-    .question-text { font-size: 1.3rem; margin-bottom: 20px; line-height: 1.4; }
-    .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .option-btn {
-      padding: 15px;
-      border: 2px solid #334155;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
-      border-radius: 10px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    .option-btn:hover:not(:disabled) { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
-    .option-btn.selected { border-color: #f39c12; background: rgba(243, 156, 18, 0.2); }
-    .option-btn.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.3); }
-    .option-btn.incorrect { border-color: #ef4444; background: rgba(239, 68, 68, 0.3); }
-    .option-btn:disabled { cursor: default; }
-    .answer-feedback { margin-top: 15px; font-size: 1.2rem; font-weight: bold; }
-    .answer-feedback.correct { color: #22c55e; }
-    .answer-feedback.incorrect { color: #ef4444; }
-    
-    .gameover-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
-    .gameover-content { text-align: center; }
-    .gameover-title { font-size: 3rem; margin-bottom: 20px; }
-    .winner-text { font-size: 2rem; color: #00d9ff; margin-bottom: 30px; }
-    .gameover-btn {
-      padding: 15px 40px; font-size: 1.2rem;
-      border: none; border-radius: 10px;
-      background: linear-gradient(135deg, #00d9ff, #00ff88);
-      color: #1a1a2e; font-weight: bold; cursor: pointer;
-    }
-    
-    .waiting-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 50;
-    }
-    .waiting-content { text-align: center; color: white; }
-    .waiting-spinner {
-      width: 50px; height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.2);
-      border-top-color: #00d9ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .incoming-attack-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 50;
-    }
-    .incoming-attack-title { font-size: 2rem; color: #ef4444; margin-bottom: 30px; animation: pulse-text 0.5s ease-in-out infinite alternate; }
-    @keyframes pulse-text { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
-    .incoming-attack-result { font-size: 1.5rem; margin-top: 20px; }
-    .incoming-attack-result.hit { color: #ef4444; }
-    .incoming-attack-result.miss { color: #8892b0; }
-    .incoming-sunk { color: #f39c12; font-size: 1.3rem; margin-top: 10px; }
-    
-    @media (max-width: 768px) {
-      .title { font-size: 1.4rem; }
-      .grids-container { flex-direction: column; align-items: center; gap: 15px; }
-      .grid { grid-template-columns: repeat(10, 30px); }
-      .cell { width: 30px; height: 30px; font-size: 0.85rem; }
-      .corner { width: 24px; height: 24px; }
-      .label { width: 30px; height: 24px; font-size: 0.7rem; }
-      .grid-labels-side .label { width: 24px; height: 30px; }
-    }
-    @media (max-width: 400px) {
-      .grid { grid-template-columns: repeat(10, 26px); }
-      .cell { width: 26px; height: 26px; font-size: 0.75rem; }
-      .corner { width: 20px; height: 20px; }
-      .label { width: 26px; height: 20px; font-size: 0.6rem; }
-      .grid-labels-side .label { width: 20px; height: 26px; }
-    }
-  `;
-
   const isHost = gameMode === 'online-host';
+
+  const styles = `
+    .game-container { min-height:100vh; background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460); color:#fff; font-family:'Segoe UI',system-ui,sans-serif; padding:20px; display:flex; flex-direction:column; align-items:center; }
+    .header { text-align:center; margin-bottom:20px; }
+    .title { font-size:2.2rem; font-weight:800; background:linear-gradient(90deg,#00d9ff,#00ff88); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .subtitle { color:#8892b0; font-size:0.9rem; }
+    .menu-container { display:flex; justify-content:center; align-items:center; flex:1; width:100%; }
+    .menu-panel { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:30px; width:100%; max-width:420px; }
+    .menu-title { text-align:center; font-size:1.4rem; margin-bottom:25px; color:#00d9ff; }
+    .menu-btn { width:100%; padding:14px; margin:8px 0; border:none; border-radius:10px; font-size:1rem; cursor:pointer; background:linear-gradient(135deg,#334155,#1e293b); color:#fff; transition:transform 0.2s; }
+    .menu-btn:hover { transform:translateY(-2px); }
+    .menu-btn.primary { background:linear-gradient(135deg,#00d9ff,#00ff88); color:#1a1a2e; font-weight:bold; }
+    .menu-btn.back { background:transparent; border:2px solid #334155; margin-top:15px; }
+    .menu-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    .conn-panel { margin-top:20px; padding:20px; background:rgba(0,0,0,0.3); border-radius:12px; }
+    .conn-title { font-size:1.1rem; color:#00d9ff; margin-bottom:12px; text-align:center; }
+    .diff-selector { margin-bottom:18px; }
+    .diff-label { display:block; text-align:center; margin-bottom:8px; color:#8892b0; font-size:0.9rem; }
+    .diff-btns { display:flex; gap:8px; justify-content:center; }
+    .diff-btn { padding:8px 16px; border:2px solid #334155; background:transparent; color:#fff; border-radius:8px; cursor:pointer; }
+    .diff-btn:hover,.diff-btn.active { border-color:#00d9ff; background:rgba(0,217,255,0.15); }
+    .code-display { background:rgba(0,0,0,0.5); padding:14px; border-radius:8px; font-family:monospace; font-size:0.8rem; word-break:break-all; margin:10px 0; text-align:center; cursor:pointer; border:2px solid transparent; }
+    .code-display:hover { border-color:#00d9ff; }
+    .code-display.copied { border-color:#00ff88; background:rgba(0,255,136,0.1); }
+    .copy-hint { font-size:0.7rem; color:#8892b0; text-align:center; }
+    .copy-hint.success { color:#00ff88; }
+    .code-input { width:100%; padding:12px; border:2px solid #334155; border-radius:8px; background:rgba(0,0,0,0.4); color:#fff; font-size:0.95rem; margin:8px 0; }
+    .code-input:focus { outline:none; border-color:#00d9ff; }
+    .status-box { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; font-size:0.9rem; }
+    .status-dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
+    .status-dot.ready { background:#fbbf24; }
+    .status-dot.connected { background:#22c55e; box-shadow:0 0 8px #22c55e; }
+    .setup-container { display:flex; flex-direction:column; align-items:center; max-width:600px; }
+    .setup-header { text-align:center; margin-bottom:15px; }
+    .player-ind { font-size:1.3rem; font-weight:bold; color:#00d9ff; margin-bottom:12px; }
+    .ship-info { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .ship-preview { display:flex; gap:2px; }
+    .ship-cell { width:22px; height:22px; border-radius:3px; }
+    .setup-controls { display:flex; gap:8px; }
+    .ctrl-btn { padding:8px 14px; border:2px solid #334155; background:transparent; color:#fff; border-radius:8px; cursor:pointer; }
+    .ctrl-btn:hover,.ctrl-btn.active { border-color:#00d9ff; background:rgba(0,217,255,0.1); }
+    .grid-wrapper { display:inline-block; }
+    .grid-labels-top { display:flex; }
+    .corner { width:28px; height:28px; }
+    .label { width:32px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#8892b0; font-size:0.75rem; }
+    .grid-body { display:flex; }
+    .grid-labels-side { display:flex; flex-direction:column; }
+    .grid-labels-side .label { width:28px; height:32px; }
+    .grid { display:grid; grid-template-columns:repeat(10,32px); gap:2px; background:rgba(0,0,0,0.3); padding:4px; border-radius:8px; }
+    .cell { width:32px; height:32px; background:rgba(0,100,150,0.3); border-radius:3px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1rem; }
+    .cell:hover { background:rgba(0,200,255,0.3); }
+    .cell.ship { cursor:default; }
+    .cell.enemy:hover { background:rgba(255,100,100,0.4); }
+    .cell.hit { background:rgba(255,100,100,0.6); }
+    .cell.miss { background:rgba(100,100,100,0.4); }
+    .cell.gift-cell { background:rgba(255,200,0,0.3); border:2px solid #fbbf24; }
+    .cell.incoming { animation:pulse 0.5s infinite; }
+    .cell.firing-launch { background:rgba(255,200,0,0.4); }
+    .cell.firing-travel { background:rgba(255,150,0,0.5); }
+    .cell.firing-impact { background:rgba(255,100,0,0.7); }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+    .battle-container { display:flex; flex-direction:column; align-items:center; width:100%; max-width:1000px; }
+    .battle-header { text-align:center; margin-bottom:12px; }
+    .turn-ind { font-size:1.2rem; font-weight:bold; padding:10px 18px; border-radius:10px; display:inline-block; }
+    .turn-ind.my { color:#00ff88; background:rgba(0,255,136,0.15); border:2px solid #00ff88; }
+    .turn-ind.wait { color:#fbbf24; background:rgba(251,191,36,0.15); border:2px solid #fbbf24; }
+    .grids { display:flex; justify-content:center; gap:25px; flex-wrap:wrap; }
+    .grid-section { text-align:center; }
+    .grid-title { font-size:1rem; margin-bottom:6px; color:#00d9ff; font-weight:bold; }
+    .ships-status { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin-top:8px; }
+    .ship-stat { padding:3px 6px; background:rgba(0,150,100,0.3); border-radius:4px; font-size:0.65rem; }
+    .ship-stat.sunk { background:rgba(200,50,50,0.5); text-decoration:line-through; }
+    .weapons-panel { margin-top:15px; text-align:center; }
+    .weapons-title { font-size:1rem; margin-bottom:8px; color:#00d9ff; }
+    .weapons-grid { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; }
+    .weapon-btn { display:flex; flex-direction:column; align-items:center; padding:6px 10px; border:2px solid #334155; background:rgba(0,0,0,0.3); color:#fff; border-radius:8px; cursor:pointer; min-width:65px; }
+    .weapon-btn:hover:not(:disabled) { border-color:#00d9ff; }
+    .weapon-btn.selected { border-color:#00ff88; background:rgba(0,255,136,0.2); }
+    .weapon-btn:disabled { opacity:0.4; cursor:not-allowed; }
+    .weapon-icon { font-size:1.2rem; }
+    .weapon-name { font-size:0.65rem; }
+    .weapon-count { font-size:0.7rem; color:#00d9ff; font-weight:bold; }
+    .question-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:100; }
+    .question-modal { background:linear-gradient(135deg,#1a1a2e,#16213e); border:2px solid #00d9ff; border-radius:16px; padding:25px; max-width:450px; width:90%; text-align:center; }
+    .shot-result { margin-bottom:15px; padding:12px; border-radius:8px; background:rgba(100,100,100,0.3); }
+    .shot-result.hit { background:rgba(255,100,100,0.3); border:1px solid #e74c3c; }
+    .shot-result-text { font-size:1.3rem; font-weight:bold; }
+    .sunk-ann { color:#f39c12; font-weight:bold; margin-top:8px; }
+    .extra-notice { color:#00ff88; font-weight:bold; margin-top:8px; }
+    .watching-ind { background:rgba(0,217,255,0.2); border:2px solid #00d9ff; border-radius:8px; padding:12px; margin-bottom:15px; color:#00d9ff; }
+    .q-header { font-size:1.1rem; color:#00d9ff; margin-bottom:12px; }
+    .q-text { font-size:1.2rem; margin-bottom:15px; }
+    .options { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .opt-btn { padding:12px; border:2px solid #334155; background:rgba(0,0,0,0.3); color:#fff; border-radius:8px; font-size:0.95rem; cursor:pointer; }
+    .opt-btn:hover:not(:disabled) { border-color:#00d9ff; }
+    .opt-btn.selected { border-color:#f39c12; background:rgba(243,156,18,0.2); }
+    .opt-btn.correct { border-color:#22c55e; background:rgba(34,197,94,0.3); }
+    .opt-btn.incorrect { border-color:#ef4444; background:rgba(239,68,68,0.3); }
+    .feedback { margin-top:12px; font-size:1.1rem; font-weight:bold; }
+    .feedback.correct { color:#22c55e; }
+    .feedback.incorrect { color:#ef4444; }
+    .gameover-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:100; }
+    .gameover-content { text-align:center; }
+    .gameover-title { font-size:2.5rem; margin-bottom:15px; }
+    .winner-text { font-size:1.8rem; color:#00d9ff; margin-bottom:25px; }
+    .gameover-btn { padding:12px 35px; font-size:1.1rem; border:none; border-radius:10px; background:linear-gradient(135deg,#00d9ff,#00ff88); color:#1a1a2e; font-weight:bold; cursor:pointer; }
+    .waiting-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:50; }
+    .waiting-content { text-align:center; }
+    .spinner { width:40px; height:40px; border:4px solid rgba(255,255,255,0.2); border-top-color:#00d9ff; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 15px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .incoming-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:50; }
+    .incoming-title { font-size:1.8rem; color:#ef4444; margin-bottom:20px; animation:blink 0.5s infinite alternate; }
+    @keyframes blink { from{opacity:0.7} to{opacity:1} }
+    .incoming-result { font-size:1.3rem; margin-top:15px; }
+    .incoming-result.hit { color:#ef4444; }
+    .incoming-result.miss { color:#8892b0; }
+    @media(max-width:768px) { .title{font-size:1.5rem} .grids{flex-direction:column;align-items:center} .grid{grid-template-columns:repeat(10,28px)} .cell{width:28px;height:28px;font-size:0.85rem} .label{width:28px;height:24px;font-size:0.65rem} .grid-labels-side .label{width:24px;height:28px} .corner{width:24px;height:24px} }
+  `;
 
   return (
     <div className="game-container">
       <style>{styles}</style>
-      
       <div className="header">
         <h1 className="title">⚓ Battleship ESL ⚓</h1>
         <p className="subtitle">Naval Combat Grammar Challenge</p>
       </div>
 
-      {newAirdropMessage && <div className="airdrop-notification">{newAirdropMessage}</div>}
-
-      {/* MENU PHASE */}
+      {/* MENU */}
       {gamePhase === 'menu' && (
         <div className="menu-container">
           <div className="menu-panel">
             <div className="menu-title">🎮 Online Multiplayer</div>
 
-            {/* No mode selected - show buttons */}
             {!gameMode && (
               <>
-                <button className="menu-btn primary" onClick={hostGame}>🌐 Host Online Game</button>
-                <button className="menu-btn" onClick={joinGame}>🔗 Join Online Game</button>
+                <button className="menu-btn primary" onClick={startHost}>🌐 Host Game</button>
+                <button className="menu-btn" onClick={startJoin}>🔗 Join Game</button>
               </>
             )}
 
-            {/* HOST MODE */}
             {gameMode === 'online-host' && (
-              <div className="connection-panel">
-                <div className="panel-title">🌐 Hosting Game</div>
-                
-                {/* Difficulty selector - HOST ONLY */}
-                <div className="difficulty-selector">
-                  <span className="difficulty-label">Grammar Difficulty</span>
-                  <div className="difficulty-buttons">
-                    <button className={`diff-btn ${difficulty === 'easy' ? 'active' : ''}`} onClick={() => setDifficulty('easy')}>Easy</button>
-                    <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => setDifficulty('medium')}>Medium</button>
-                    <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => setDifficulty('hard')}>Hard</button>
+              <div className="conn-panel">
+                <div className="conn-title">🌐 Hosting Game</div>
+
+                <div className="diff-selector">
+                  <span className="diff-label">Difficulty</span>
+                  <div className="diff-btns">
+                    <button className={`diff-btn ${difficulty==='easy'?'active':''}`} onClick={()=>setDifficulty('easy')}>Easy</button>
+                    <button className={`diff-btn ${difficulty==='medium'?'active':''}`} onClick={()=>setDifficulty('medium')}>Medium</button>
+                    <button className={`diff-btn ${difficulty==='hard'?'active':''}`} onClick={()=>setDifficulty('hard')}>Hard</button>
                   </div>
-                  <div className="difficulty-hint">{getDifficultyHint()}</div>
                 </div>
-                
-                <div>Share this code with your opponent:</div>
-                <div 
-                  className={`peer-id-display ${copySuccess ? 'copied' : ''}`}
-                  onClick={() => peerId && copyToClipboard(peerId)}
-                >
-                  {peerId || 'Generating...'}
+
+                <div style={{textAlign:'center',marginBottom:'8px'}}>Your game code:</div>
+                <div className={`code-display ${copySuccess?'copied':''}`} onClick={()=>myPeerId&&copyToClipboard(myPeerId)}>
+                  {myPeerId || 'Generating...'}
                 </div>
-                <div className="copy-hint">
-                  {copySuccess ? <span className="copy-success">✓ Copied!</span> : 'Click to copy'}
+                <div className={`copy-hint ${copySuccess?'success':''}`}>{copySuccess ? '✓ Copied!' : 'Tap to copy'}</div>
+
+                <div className="status-box">
+                  <div className={`status-dot ${connected?'connected':peerReady?'ready':''}`}></div>
+                  <span>{statusMsg}</span>
                 </div>
-                
-                <div className="status-indicator">
-                  <div className={`status-dot ${isConnected ? 'connected' : ''}`}></div>
-                  <span>{connectionStatus}</span>
-                </div>
-                
-                <button className="menu-btn back" onClick={() => { setGameMode(null); peerRef.current?.destroy(); }}>← Back</button>
+
+                <button className="menu-btn back" onClick={goBack}>← Back</button>
               </div>
             )}
 
-            {/* JOINER MODE */}
             {gameMode === 'online-joiner' && (
-              <div className="connection-panel">
-                <div className="panel-title">🔗 Join Game</div>
-                
-                <div>Enter host's game code:</div>
-                <div className="paste-input-wrapper">
-                  <input 
-                    className="peer-input" 
-                    type="text" 
-                    placeholder="Paste game code here" 
-                    value={remotePeerId} 
-                    onChange={(e) => setRemotePeerId(e.target.value)} 
-                  />
-                  <button 
-                    className="paste-btn" 
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText();
-                        setRemotePeerId(text.trim());
-                      } catch (err) {
-                        console.log('Paste failed');
-                      }
-                    }}
-                  >
-                    📋
-                  </button>
-                </div>
-                
-                <button 
-                  className="menu-btn primary" 
-                  onClick={connectToHost} 
-                  disabled={!remotePeerId.trim() || !peerId}
+              <div className="conn-panel">
+                <div className="conn-title">🔗 Join Game</div>
+
+                <div style={{textAlign:'center',marginBottom:'8px'}}>Enter host's code:</div>
+                <input
+                  className="code-input"
+                  type="text"
+                  placeholder="Paste code here"
+                  value={hostCode}
+                  onChange={(e) => setHostCode(e.target.value)}
+                />
+
+                <button
+                  className="menu-btn primary"
+                  onClick={doConnect}
+                  disabled={!peerReady || !hostCode.trim()}
                 >
-                  Connect
+                  {peerReady ? 'Connect' : 'Initializing...'}
                 </button>
-                
-                <div className="status-indicator">
-                  <div className={`status-dot ${isConnected ? 'connected' : ''}`}></div>
-                  <span>{connectionStatus || 'Enter code and click Connect'}</span>
+
+                <div className="status-box">
+                  <div className={`status-dot ${connected?'connected':peerReady?'ready':''}`}></div>
+                  <span>{statusMsg}</span>
                 </div>
-                
-                <button className="menu-btn back" onClick={() => { setGameMode(null); peerRef.current?.destroy(); }}>← Back</button>
+
+                <button className="menu-btn back" onClick={goBack}>← Back</button>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* SETUP PHASE */}
+      {/* SETUP */}
       {gamePhase === 'setup' && (
         <div className="setup-container">
           <div className="setup-header">
-            <div className="player-indicator">Your Fleet Setup</div>
+            <div className="player-ind">Place Your Ships</div>
             {currentShipIndex < SHIPS.length && (
-              <div className="ship-to-place">
+              <div className="ship-info">
                 <div className="ship-preview">
-                  {Array.from({ length: SHIPS[currentShipIndex].size }, (_, i) => (
-                    <div key={i} className="ship-preview-cell" style={{ backgroundColor: SHIPS[currentShipIndex].color }} />
+                  {Array.from({length:SHIPS[currentShipIndex].size},(_,i)=>(
+                    <div key={i} className="ship-cell" style={{backgroundColor:SHIPS[currentShipIndex].color}}/>
                   ))}
                 </div>
                 <div>
-                  <div className="ship-name">{SHIPS[currentShipIndex].name}</div>
-                  <div className="ship-size">Size: {SHIPS[currentShipIndex].size}</div>
+                  <div style={{fontWeight:'bold'}}>{SHIPS[currentShipIndex].name}</div>
+                  <div style={{fontSize:'0.8rem',color:'#8892b0'}}>Size: {SHIPS[currentShipIndex].size}</div>
                 </div>
               </div>
             )}
             <div className="setup-controls">
-              <button className={`control-btn ${isHorizontal ? 'active' : ''}`} onClick={() => setIsHorizontal(true)}>Horizontal</button>
-              <button className={`control-btn ${!isHorizontal ? 'active' : ''}`} onClick={() => setIsHorizontal(false)}>Vertical</button>
-              <button className="control-btn" onClick={randomPlaceShips}>Random</button>
+              <button className={`ctrl-btn ${isHorizontal?'active':''}`} onClick={()=>setIsHorizontal(true)}>Horizontal</button>
+              <button className={`ctrl-btn ${!isHorizontal?'active':''}`} onClick={()=>setIsHorizontal(false)}>Vertical</button>
+              <button className="ctrl-btn" onClick={randomPlaceShips}>Random</button>
             </div>
           </div>
           {renderGrid(true, isHost ? player1 : player2, true)}
@@ -1520,53 +915,46 @@ function BattleshipESL() {
       {waitingForOpponent && gamePhase === 'setup' && (
         <div className="waiting-overlay">
           <div className="waiting-content">
-            <div className="waiting-spinner"></div>
+            <div className="spinner"></div>
             <div>Waiting for opponent...</div>
           </div>
         </div>
       )}
 
-      {/* BATTLE PHASE */}
+      {/* BATTLE */}
       {gamePhase === 'battle' && (
         <div className="battle-container">
           <div className="battle-header">
-            <div className={`turn-indicator ${!isMyTurn ? 'waiting' : ''}`}>
+            <div className={`turn-ind ${isMyTurn?'my':'wait'}`}>
               {isMyTurn ? '🎯 Your Turn!' : '⏳ Opponent\'s Turn'}
             </div>
           </div>
-          <div className="grids-container">
+          <div className="grids">
             <div className="grid-section">
               <div className="grid-title">🎯 Enemy Waters</div>
-              {renderGrid(false, isHost ? player2 : player1, false, isHost ? player1.tracking : player2.tracking)}
+              {renderGrid(false, isHost?player2:player1, false, isHost?player1.tracking:player2.tracking)}
             </div>
             <div className="grid-section">
               <div className="grid-title">⚓ Your Fleet</div>
-              {renderGrid(true, isHost ? player1 : player2)}
+              {renderGrid(true, isHost?player1:player2)}
               <div className="ships-status">
-                {SHIPS.map((ship, idx) => {
-                  const playerShips = isHost ? player1.ships : player2.ships;
-                  const isSunk = playerShips[idx]?.sunk;
-                  return <div key={idx} className={`ship-status ${isSunk ? 'sunk' : ''}`}>{ship.name}</div>;
+                {SHIPS.map((s,i)=>{
+                  const ships = isHost?player1.ships:player2.ships;
+                  return <div key={i} className={`ship-stat ${ships[i]?.sunk?'sunk':''}`}>{s.name}</div>;
                 })}
               </div>
             </div>
           </div>
           <div className="weapons-panel">
-            <div className="weapons-title">⚔️ Arsenal</div>
+            <div className="weapons-title">⚔️ Weapons</div>
             <div className="weapons-grid">
-              {Object.entries(WEAPONS).map(([key, weapon]) => {
-                const playerWeapons = isHost ? player1.weapons : player2.weapons;
-                const count = playerWeapons[key];
+              {Object.entries(WEAPONS).map(([k,w])=>{
+                const weaps = isHost?player1.weapons:player2.weapons;
                 return (
-                  <button 
-                    key={key} 
-                    className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} 
-                    onClick={() => setSelectedWeapon(key)} 
-                    disabled={(key !== 'simple' && count <= 0) || !isMyTurn || showFiringAnimation}
-                  >
-                    <span className="weapon-icon">{weapon.icon}</span>
-                    <span className="weapon-name">{weapon.name}</span>
-                    <span className="weapon-count">{key === 'simple' ? '∞' : count}</span>
+                  <button key={k} className={`weapon-btn ${selectedWeapon===k?'selected':''}`} onClick={()=>setSelectedWeapon(k)} disabled={(k!=='simple'&&weaps[k]<=0)||!isMyTurn||showFiringAnimation}>
+                    <span className="weapon-icon">{w.icon}</span>
+                    <span className="weapon-name">{w.name}</span>
+                    <span className="weapon-count">{k==='simple'?'∞':weaps[k]}</span>
                   </button>
                 );
               })}
@@ -1575,40 +963,35 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* QUESTION PHASE */}
+      {/* QUESTION */}
       {gamePhase === 'question' && currentQuestion && (
         <div className="question-overlay">
           <div className="question-modal">
             {isWatchingQuestion ? (
               <>
-                <div className={`shot-result ${incomingShot?.gotHit ? 'hit' : 'miss'}`}>
-                  <div className="shot-result-text">{incomingShot?.gotHit ? '💥 HIT!' : '💨 MISS!'}</div>
-                  {incomingShot?.sunkShip && <div className="sunk-announcement">🚢 Your {incomingShot.sunkShip} was sunk!</div>}
+                <div className={`shot-result ${incomingShot?.gotHit?'hit':''}`}>
+                  <div className="shot-result-text">{incomingShot?.gotHit?'💥 HIT!':'💨 MISS!'}</div>
+                  {incomingShot?.sunkShip && <div className="sunk-ann">🚢 {incomingShot.sunkShip} sunk!</div>}
                 </div>
-                <div className="watching-indicator">👀 Opponent answering...</div>
+                <div className="watching-ind">👀 Opponent answering...</div>
               </>
             ) : (
-              <div className={`shot-result ${shotResults.some(r => r.result === 'hit') ? 'hit' : 'miss'}`}>
-                <div className="shot-result-text">{shotResults.some(r => r.result === 'hit') ? '💥 HIT!' : '💨 MISS!'}</div>
-                {sunkShip && <div className="sunk-announcement">🚢 You sunk their {sunkShip}!</div>}
-                {extraTurn && <div className="extra-turn-notice">⚡ Correct = another turn!</div>}
+              <div className={`shot-result ${shotResults.some(r=>r.result==='hit')?'hit':''}`}>
+                <div className="shot-result-text">{shotResults.some(r=>r.result==='hit')?'💥 HIT!':'💨 MISS!'}</div>
+                {sunkShip && <div className="sunk-ann">🚢 You sunk {sunkShip}!</div>}
+                {extraTurn && <div className="extra-notice">⚡ Correct = another turn!</div>}
               </div>
             )}
-            <div className="question-header">📚 Grammar ({difficulty})</div>
-            <div className="question-text">{currentQuestion.q}</div>
-            <div className="options-grid">
-              {currentQuestion.options.map((option, idx) => (
-                <button 
-                  key={idx} 
-                  className={`option-btn ${selectedAnswer === idx ? 'selected' : ''} ${answerResult !== null && idx === currentQuestion.answer ? 'correct' : ''} ${answerResult === false && selectedAnswer === idx ? 'incorrect' : ''}`} 
-                  onClick={() => handleAnswer(idx)} 
-                  disabled={selectedAnswer !== null || isWatchingQuestion}
-                >
-                  {option}
+            <div className="q-header">📚 Grammar ({difficulty})</div>
+            <div className="q-text">{currentQuestion.q}</div>
+            <div className="options">
+              {currentQuestion.options.map((opt,i)=>(
+                <button key={i} className={`opt-btn ${selectedAnswer===i?'selected':''} ${answerResult!==null&&i===currentQuestion.answer?'correct':''} ${answerResult===false&&selectedAnswer===i?'incorrect':''}`} onClick={()=>handleAnswer(i)} disabled={selectedAnswer!==null||isWatchingQuestion}>
+                  {opt}
                 </button>
               ))}
             </div>
-            {answerResult !== null && <div className={`answer-feedback ${answerResult ? 'correct' : 'incorrect'}`}>{answerResult ? '✓ Correct!' : '✗ Try again!'}</div>}
+            {answerResult!==null && <div className={`feedback ${answerResult?'correct':'incorrect'}`}>{answerResult?'✓ Correct!':'✗ Try again!'}</div>}
           </div>
         </div>
       )}
@@ -1618,23 +1001,20 @@ function BattleshipESL() {
         <div className="gameover-overlay">
           <div className="gameover-content">
             <div className="gameover-title">🏆 Game Over! 🏆</div>
-            <div className="winner-text">{winner === (isHost ? 1 : 2) ? 'You Win!' : 'You Lose!'}</div>
-            <button className="gameover-btn" onClick={() => window.location.reload()}>Play Again</button>
+            <div className="winner-text">{winner===(isHost?1:2)?'You Win!':'You Lose!'}</div>
+            <button className="gameover-btn" onClick={()=>window.location.reload()}>Play Again</button>
           </div>
         </div>
       )}
 
       {/* INCOMING ATTACK */}
       {showIncomingAnimation && incomingShot && (
-        <div className="incoming-attack-overlay">
-          <div className="incoming-attack-title">⚠️ INCOMING! ⚠️</div>
-          <div className="grid-section">
-            {renderGrid(true, isHost ? player1 : player2)}
+        <div className="incoming-overlay">
+          <div className="incoming-title">⚠️ INCOMING! ⚠️</div>
+          {renderGrid(true, isHost?player1:player2)}
+          <div className={`incoming-result ${incomingShot.gotHit?'hit':'miss'}`}>
+            {incomingShot.gotHit?'💥 Hit!':'💨 Miss!'}
           </div>
-          <div className={`incoming-attack-result ${incomingShot.gotHit ? 'hit' : 'miss'}`}>
-            {incomingShot.gotHit ? '💥 Hit!' : '💨 Miss!'}
-          </div>
-          {incomingShot.sunkShip && <div className="incoming-sunk">🚢 {incomingShot.sunkShip} sunk!</div>}
         </div>
       )}
     </div>
