@@ -16,10 +16,13 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 8.0 (UI OVERHAUL + RETRY QUESTIONS)
+// BATTLESHIP ESL - VERSION 9.0 (ONLINE-ONLY + IMPROVED FEATURES)
 // ============================================
 
-// Grammar Questions Database
+// Grammar Questions Database - IMPROVED SCALING
+// Easy: Basic verb forms, articles, simple present/past
+// Medium: Perfect tenses, conditionals, passive voice, comparatives
+// Hard: Inversion, subjunctive, complex conditionals, advanced passive
 const grammarQuestions = {
   easy: [
     { q: "I ___ a student.", options: ["am", "is", "are", "be"], answer: 0 },
@@ -46,7 +49,12 @@ const grammarQuestions = {
     { q: "This book is ___.", options: ["my", "mine", "me", "I"], answer: 1 },
     { q: "I brush my ___ every morning.", options: ["tooth", "teeth", "tooths", "teeths"], answer: 1 },
     { q: "___ are you from?", options: ["What", "Who", "Where", "When"], answer: 2 },
-    { q: "The dog is ___ the house.", options: ["inside", "on", "at", "to"], answer: 0 }
+    { q: "The dog is ___ the house.", options: ["inside", "on", "at", "to"], answer: 0 },
+    { q: "I ___ my homework now.", options: ["do", "doing", "am doing", "does"], answer: 2 },
+    { q: "She ___ a red dress.", options: ["wear", "wears", "wearing", "wore"], answer: 1 },
+    { q: "The book is ___ the desk.", options: ["on", "in", "at", "to"], answer: 0 },
+    { q: "We ___ English at school.", options: ["learn", "learns", "learning", "learned"], answer: 0 },
+    { q: "My friend ___ football.", options: ["play", "plays", "playing", "played"], answer: 1 }
   ],
   medium: [
     { q: "She ___ finished her homework.", options: ["have", "has", "had", "having"], answer: 1 },
@@ -68,7 +76,12 @@ const grammarQuestions = {
     { q: "By next year, I ___ graduated.", options: ["will", "will have", "would", "have"], answer: 1 },
     { q: "___ of the students passed.", options: ["Most", "Much", "Many", "A lot"], answer: 0 },
     { q: "He denied ___ the window.", options: ["break", "broke", "breaking", "to break"], answer: 2 },
-    { q: "I'd rather ___ at home.", options: ["stay", "stayed", "staying", "to stay"], answer: 0 }
+    { q: "I'd rather ___ at home.", options: ["stay", "stayed", "staying", "to stay"], answer: 0 },
+    { q: "She ___ to the gym every day.", options: ["used to go", "use to go", "uses to go", "used going"], answer: 0 },
+    { q: "The letter ___ yesterday.", options: ["sent", "was sent", "send", "has sent"], answer: 1 },
+    { q: "I'll call you ___ I arrive.", options: ["when", "while", "during", "until"], answer: 0 },
+    { q: "He's the man ___ car was stolen.", options: ["who", "which", "whose", "whom"], answer: 2 },
+    { q: "You ___ see a doctor.", options: ["should", "would", "must to", "can to"], answer: 0 }
   ],
   hard: [
     { q: "Had I known, I ___ differently.", options: ["would act", "would have acted", "will act", "acted"], answer: 1 },
@@ -90,7 +103,12 @@ const grammarQuestions = {
     { q: "Should you need help, ___ me.", options: ["call", "called", "calling", "to call"], answer: 0 },
     { q: "Never ___ such nonsense!", options: ["I heard", "have I heard", "I have heard", "did I heard"], answer: 1 },
     { q: "The book, ___ I bought yesterday, is great.", options: ["that", "which", "what", "whose"], answer: 1 },
-    { q: "___ the circumstances, he did well.", options: ["Given", "Giving", "Gave", "Give"], answer: 0 }
+    { q: "___ the circumstances, he did well.", options: ["Given", "Giving", "Gave", "Give"], answer: 0 },
+    { q: "Seldom ___ such talent.", options: ["we see", "do we see", "we do see", "see we"], answer: 1 },
+    { q: "Only after he left ___ the truth.", options: ["I realized", "did I realize", "I did realize", "realized I"], answer: 1 },
+    { q: "It's time we ___ going.", options: ["get", "got", "have got", "will get"], answer: 1 },
+    { q: "___ he to come, I would leave.", options: ["Were", "Was", "If", "Should"], answer: 0 },
+    { q: "On no account ___ be disturbed.", options: ["he must", "must he", "he should", "should he"], answer: 1 }
   ]
 };
 
@@ -109,6 +127,16 @@ const WEAPONS = {
   big: { name: 'Big Bomb', pattern: [[0,0],[-1,0],[1,0],[0,-1],[0,1]], icon: '💣' },
   rain: { name: 'Missile Rain', pattern: 'random', icon: '🌧️' },
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
+};
+
+// Airdrop configuration - balanced spawning
+const AIRDROP_CONFIG = {
+  checkIntervalTurns: 2,      // Check every 2 turns
+  baseChance: 0.12,           // 12% base chance
+  maxChance: 0.35,            // 35% max chance after drought
+  droughtThreshold: 8,        // Increase chance after 8 checks without spawn
+  chanceIncrement: 0.05,      // Increase by 5% per drought check
+  maxAirdropsPerGame: 6       // Cap total airdrops
 };
 
 // Helper Functions
@@ -140,10 +168,9 @@ function BattleshipESL() {
   const [gameMode, setGameMode] = useState(null);
   const [gamePhase, setGamePhase] = useState('menu');
   const [difficulty, setDifficulty] = useState('easy');
-  const [currentPlayer, setCurrentPlayer] = useState(1);
   const [winner, setWinner] = useState(null);
 
-  // Player states with separated tracking/received
+  // Player states
   const [player1, setPlayer1] = useState({
     grid: createEmptyGrid(),
     ships: [],
@@ -164,14 +191,12 @@ function BattleshipESL() {
     shipsRemaining: 5
   });
 
-  // FIXED: Explicit setup completion tracking
+  // Setup completion tracking
   const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
   const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
-  const [transitionForPlayer, setTransitionForPlayer] = useState(null);
-  const [opponentSetupReceived, setOpponentSetupReceived] = useState(false); // FIXED v6: Track if opponent's setup data received
+  const [opponentSetupReceived, setOpponentSetupReceived] = useState(false);
 
   // Setup state
-  const [setupPlayer, setSetupPlayer] = useState(1);
   const [currentShipIndex, setCurrentShipIndex] = useState(0);
   const [isHorizontal, setIsHorizontal] = useState(true);
   const [placedShips, setPlacedShips] = useState([]);
@@ -187,7 +212,7 @@ function BattleshipESL() {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answerResult, setAnswerResult] = useState(null);
-  const [isWatchingQuestion, setIsWatchingQuestion] = useState(false); // FIXED v7: True when watching opponent answer
+  const [isWatchingQuestion, setIsWatchingQuestion] = useState(false);
 
   // Online state
   const [peerId, setPeerId] = useState('');
@@ -199,9 +224,18 @@ function BattleshipESL() {
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   
-  // Incoming shot animation state
+  // Animation states
   const [incomingShot, setIncomingShot] = useState(null);
   const [showIncomingAnimation, setShowIncomingAnimation] = useState(false);
+  const [firingAnimation, setFiringAnimation] = useState(null);
+  const [showFiringAnimation, setShowFiringAnimation] = useState(false);
+  
+  // Airdrop state
+  const [turnCount, setTurnCount] = useState(0);
+  const [airdropCheckCount, setAirdropCheckCount] = useState(0);
+  const [airdropsSinceLastSpawn, setAirdropsSinceLastSpawn] = useState(0);
+  const [totalAirdrops, setTotalAirdrops] = useState(0);
+  const [newAirdropMessage, setNewAirdropMessage] = useState(null);
 
   // Refs
   const peerRef = useRef(null);
@@ -209,7 +243,6 @@ function BattleshipESL() {
   const gameModeRef = useRef(null);
   const mySetupCompleteRef = useRef(false);
   const waitingRef = useRef(false);
-  // FIXED v7: Store player data in refs to avoid stale closures
   const player1Ref = useRef(player1);
   const player2Ref = useRef(player2);
 
@@ -217,7 +250,6 @@ function BattleshipESL() {
     gameModeRef.current = gameMode;
   }, [gameMode]);
 
-  // FIXED v7: Keep player refs in sync with state
   useEffect(() => {
     player1Ref.current = player1;
   }, [player1]);
@@ -226,7 +258,6 @@ function BattleshipESL() {
     player2Ref.current = player2;
   }, [player2]);
 
-  // FIXED v6: Sync setup completion refs
   useEffect(() => {
     if (gameMode === 'online-host') {
       mySetupCompleteRef.current = player1SetupComplete;
@@ -314,7 +345,6 @@ function BattleshipESL() {
     
     switch (data.type) {
       case 'setup-complete':
-        // FIXED v6: Store opponent's data including gifts
         if (currentGameMode === 'online-host') {
           setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
           setPlayer2SetupComplete(true);
@@ -324,12 +354,10 @@ function BattleshipESL() {
         }
         setOpponentSetupReceived(true);
         
-        // FIXED v6: Only go to battle if MY setup is also done (was waiting)
         if (waitingRef.current) {
           setWaitingForOpponent(false);
           setGamePhase('battle');
         }
-        // Otherwise stay in setup phase until I finish
         break;
         
       case 'shot':
@@ -340,15 +368,12 @@ function BattleshipESL() {
         handleShotResult(data);
         break;
       
-      // FIXED v7: Defender sees which answer shooter selected
       case 'answer-selected':
         setSelectedAnswer(data.answerIndex);
         break;
       
-      // FIXED v7: Defender sees the result and proceeds
       case 'question-answered':
         setAnswerResult(data.correct);
-        // Show result briefly then proceed
         setTimeout(() => {
           setWaitingForOpponent(false);
           setIsWatchingQuestion(false);
@@ -369,14 +394,11 @@ function BattleshipESL() {
         }, 1500);
         break;
       
-      // FIXED v8: Shooter got wrong answer, will retry
       case 'question-retry':
-        // Just reset selection state, new question coming
         setSelectedAnswer(null);
         setAnswerResult(null);
         break;
       
-      // FIXED v8: New question for retry attempt
       case 'new-question':
         setCurrentQuestion(data.question);
         setSelectedAnswer(null);
@@ -386,6 +408,15 @@ function BattleshipESL() {
       case 'game-over':
         setWinner(data.winner);
         setGamePhase('gameover');
+        break;
+        
+      case 'airdrop-spawned':
+        // Opponent spawned an airdrop on their grid
+        if (currentGameMode === 'online-host') {
+          setPlayer2(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
+        } else {
+          setPlayer1(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
+        }
         break;
     }
   };
@@ -397,20 +428,16 @@ function BattleshipESL() {
     const results = [];
     let gotHit = false;
     
-    // FIXED: Clear waiting state when receiving attack
     setWaitingForOpponent(false);
     
-    // FIXED v7: Use refs to get CURRENT player data (not stale closure)
     const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
     const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
     
-    // Deep copy to avoid mutation
     const myGrid = myPlayer.grid.map(r => [...r]);
     const newReceived = myPlayer.received.map(r => [...r]);
     let shipsRemaining = myPlayer.shipsRemaining;
     let sunkShipName = null;
     const myShips = myPlayer.ships.map(s => ({...s, cells: [...s.cells]}));
-    // FIXED v8: Handle gifts in online mode
     const myGifts = [...(myPlayer.gifts || [])];
     let collectedGift = null;
 
@@ -421,7 +448,6 @@ function BattleshipESL() {
         if (newReceived[r][c] === null) {
           const cell = myGrid[r][c];
           
-          // FIXED v8: Check for gift at this location
           const giftIndex = myGifts.findIndex(g => g.row === r && g.col === c);
           if (giftIndex !== -1 && !collectedGift) {
             collectedGift = myGifts[giftIndex];
@@ -451,7 +477,6 @@ function BattleshipESL() {
     setIncomingShot({ results, gotHit, sunkShip: sunkShipName });
     setShowIncomingAnimation(true);
 
-    // FIXED v8: Update player state including gifts
     setMyPlayer(prev => ({
       ...prev,
       received: newReceived,
@@ -460,7 +485,6 @@ function BattleshipESL() {
       gifts: myGifts
     }));
 
-    // FIXED v7: Generate question HERE and send to shooter
     const question = shipsRemaining > 0 ? getRandomQuestion(difficulty) : null;
 
     sendMessage({
@@ -471,7 +495,7 @@ function BattleshipESL() {
       shipsRemaining,
       gameOver: shipsRemaining === 0,
       question,
-      collectedGift // FIXED v8: Send gift info to shooter
+      collectedGift
     });
 
     setTimeout(() => {
@@ -482,9 +506,8 @@ function BattleshipESL() {
         setWinner(currentGameMode === 'online-host' ? 2 : 1);
         setGamePhase('gameover');
       } else {
-        // FIXED v7: Use the same question, watch-only mode
         setCurrentQuestion(question);
-        setIsWatchingQuestion(true); // Defender watches, can't answer
+        setIsWatchingQuestion(true);
         setGamePhase('question');
       }
     }, 2000);
@@ -502,7 +525,6 @@ function BattleshipESL() {
       data.results.forEach(({ row, col, result }) => {
         newTracking[row][col] = result;
       });
-      // FIXED v8: Add weapon from collected gift
       const newWeapons = { ...prev.weapons };
       if (data.collectedGift) {
         newWeapons[data.collectedGift.weapon] = (newWeapons[data.collectedGift.weapon] || 0) + 1;
@@ -517,15 +539,15 @@ function BattleshipESL() {
       setGamePhase('gameover');
     } else {
       setExtraTurn(data.gotHit);
-      // FIXED v7: Use the SAME question from defender, shooter can answer
       setCurrentQuestion(data.question);
-      setIsWatchingQuestion(false); // Shooter answers
+      setIsWatchingQuestion(false);
       setGamePhase('question');
     }
   };
 
-  // Ship Placement Functions
-  const canPlaceShip = (grid, row, col, size, horizontal) => {
+  // Ship Placement Functions - IMPROVED: Check for adjacency
+  const canPlaceShip = (grid, row, col, size, horizontal, existingShips = []) => {
+    // First check basic bounds and overlap
     for (let i = 0; i < size; i++) {
       const r = horizontal ? row : row + i;
       const c = horizontal ? col + i : col;
@@ -534,10 +556,35 @@ function BattleshipESL() {
     return true;
   };
 
+  // NEW: Check minimum separation between ships
+  const checkMinimumSeparation = (grid, row, col, size, horizontal) => {
+    // Check all cells around the proposed ship placement
+    for (let i = 0; i < size; i++) {
+      const r = horizontal ? row : row + i;
+      const c = horizontal ? col + i : col;
+      
+      // Check all 8 adjacent cells + the cell itself
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue; // Skip the cell itself
+          const checkR = r + dr;
+          const checkC = c + dc;
+          if (checkR >= 0 && checkR < GRID_SIZE && checkC >= 0 && checkC < GRID_SIZE) {
+            if (grid[checkR][checkC] !== null) {
+              return false; // Adjacent to another ship
+            }
+          }
+        }
+      }
+    }
+    return true;
+  };
+
   const placeShip = (row, col) => {
     if (currentShipIndex >= SHIPS.length) return;
     const ship = SHIPS[currentShipIndex];
-    const grid = setupPlayer === 1 ? [...player1.grid.map(r => [...r])] : [...player2.grid.map(r => [...r])];
+    const currentGrid = gameMode === 'online-host' ? player1.grid : player2.grid;
+    const grid = [...currentGrid.map(r => [...r])];
     
     if (!canPlaceShip(grid, row, col, ship.size, isHorizontal)) return;
     
@@ -553,75 +600,46 @@ function BattleshipESL() {
     const newPlacedShips = [...placedShips, newShip];
     setPlacedShips(newPlacedShips);
     
-    if (setupPlayer === 1) setPlayer1(prev => ({ ...prev, grid, ships: newPlacedShips }));
-    else setPlayer2(prev => ({ ...prev, grid, ships: newPlacedShips }));
+    if (gameMode === 'online-host') {
+      setPlayer1(prev => ({ ...prev, grid, ships: newPlacedShips }));
+    } else {
+      setPlayer2(prev => ({ ...prev, grid, ships: newPlacedShips }));
+    }
     
     if (currentShipIndex < SHIPS.length - 1) {
       setCurrentShipIndex(currentShipIndex + 1);
     } else {
-      // All ships placed, finish setup
       completeSetup(grid, newPlacedShips);
     }
   };
 
-  // FIXED: Separated setup completion logic
   const completeSetup = (grid, ships) => {
-    const gifts = spawnGifts(grid, 3);
+    const gifts = spawnInitialGifts(grid, 2); // Start with 2 gifts
     
-    if (gameMode === 'offline') {
-      if (setupPlayer === 1) {
-        // Player 1 finished - save their data and mark complete
-        setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
-        setPlayer1SetupComplete(true);
-        // Prepare for player 2's setup
-        setSetupPlayer(2);
-        setCurrentShipIndex(0);
-        setPlacedShips([]);
-        setIsHorizontal(true);
-        // FIXED: Set transition info explicitly
-        setTransitionForPlayer(2);
-        // Go to transition screen
-        setGamePhase('transition');
+    if (gameMode === 'online-host') {
+      setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
+      setPlayer1SetupComplete(true);
+      sendMessage({ type: 'setup-complete', grid, ships, gifts });
+      if (opponentSetupReceived) {
+        setGamePhase('battle');
       } else {
-        // Player 2 finished - save their data and mark complete
-        setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
-        setPlayer2SetupComplete(true);
-        // Both players ready, prepare for battle
-        setCurrentPlayer(1);
-        // FIXED: Set transition info explicitly
-        setTransitionForPlayer(1);
-        setGamePhase('transition');
+        setWaitingForOpponent(true);
       }
     } else {
-      // Online mode
-      if (gameMode === 'online-host') {
-        setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
-        setPlayer1SetupComplete(true);
-        // FIXED v6: Include gifts in message
-        sendMessage({ type: 'setup-complete', grid, ships, gifts });
-        // FIXED v6: If opponent already sent their setup, go to battle
-        if (opponentSetupReceived) {
-          setGamePhase('battle');
-        } else {
-          setWaitingForOpponent(true);
-        }
+      setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
+      setPlayer2SetupComplete(true);
+      sendMessage({ type: 'setup-complete', grid, ships, gifts });
+      setIsMyTurn(false);
+      if (opponentSetupReceived) {
+        setGamePhase('battle');
       } else {
-        setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
-        setPlayer2SetupComplete(true);
-        // FIXED v6: Include gifts in message
-        sendMessage({ type: 'setup-complete', grid, ships, gifts });
-        setIsMyTurn(false);
-        // FIXED v6: If opponent already sent their setup, go to battle
-        if (opponentSetupReceived) {
-          setGamePhase('battle');
-        } else {
-          setWaitingForOpponent(true);
-        }
+        setWaitingForOpponent(true);
       }
     }
   };
 
-  const spawnGifts = (grid, count) => {
+  // Initial gifts spawn
+  const spawnInitialGifts = (grid, count) => {
     const gifts = [];
     const emptyCells = [];
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -639,6 +657,77 @@ function BattleshipESL() {
     return gifts;
   };
 
+  // IMPROVED: Airdrop spawning during game - balanced probability system
+  const checkAndSpawnAirdrop = useCallback(() => {
+    if (totalAirdrops >= AIRDROP_CONFIG.maxAirdropsPerGame) return;
+    
+    const currentGameMode = gameModeRef.current;
+    const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
+    const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
+    
+    // Calculate current spawn chance
+    let currentChance = AIRDROP_CONFIG.baseChance;
+    if (airdropsSinceLastSpawn >= AIRDROP_CONFIG.droughtThreshold) {
+      currentChance = Math.min(
+        AIRDROP_CONFIG.maxChance,
+        AIRDROP_CONFIG.baseChance + (airdropsSinceLastSpawn - AIRDROP_CONFIG.droughtThreshold + 1) * AIRDROP_CONFIG.chanceIncrement
+      );
+    }
+    
+    const roll = Math.random();
+    if (roll < currentChance) {
+      // Spawn an airdrop!
+      const grid = myPlayer.grid;
+      const received = myPlayer.received;
+      const existingGifts = myPlayer.gifts || [];
+      
+      // Find valid empty cells (not hit, not a ship, not already a gift)
+      const emptyCells = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (grid[r][c] === null && received[r][c] === null && !existingGifts.some(g => g.row === r && g.col === c)) {
+            emptyCells.push([r, c]);
+          }
+        }
+      }
+      
+      if (emptyCells.length > 0) {
+        const [r, c] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        const weaponTypes = ['big', 'rain', 'nuclear'];
+        const weaponWeights = [0.5, 0.35, 0.15]; // Big more common, nuclear rare
+        let weightRoll = Math.random();
+        let weaponType = 'big';
+        for (let i = 0; i < weaponTypes.length; i++) {
+          if (weightRoll < weaponWeights[i]) {
+            weaponType = weaponTypes[i];
+            break;
+          }
+          weightRoll -= weaponWeights[i];
+        }
+        
+        const newGift = { row: r, col: c, weapon: weaponType };
+        
+        setMyPlayer(prev => ({
+          ...prev,
+          gifts: [...(prev.gifts || []), newGift]
+        }));
+        
+        // Notify opponent
+        sendMessage({ type: 'airdrop-spawned', gift: newGift });
+        
+        setTotalAirdrops(prev => prev + 1);
+        setAirdropsSinceLastSpawn(0);
+        setNewAirdropMessage(`🎁 Airdrop appeared! (${WEAPONS[weaponType].icon} ${WEAPONS[weaponType].name})`);
+        setTimeout(() => setNewAirdropMessage(null), 3000);
+      }
+    } else {
+      setAirdropsSinceLastSpawn(prev => prev + 1);
+    }
+    
+    setAirdropCheckCount(prev => prev + 1);
+  }, [totalAirdrops, airdropsSinceLastSpawn, sendMessage]);
+
+  // IMPROVED: Random ship placement with minimum separation
   const randomPlaceShips = () => {
     const grid = createEmptyGrid();
     const ships = [];
@@ -646,11 +735,14 @@ function BattleshipESL() {
     for (let i = 0; i < SHIPS.length; i++) {
       const ship = SHIPS[i];
       let placed = false, attempts = 0;
-      while (!placed && attempts < 100) {
+      while (!placed && attempts < 200) { // More attempts for stricter placement
         const horizontal = Math.random() > 0.5;
         const row = Math.floor(Math.random() * GRID_SIZE);
         const col = Math.floor(Math.random() * GRID_SIZE);
-        if (canPlaceShip(grid, row, col, ship.size, horizontal)) {
+        
+        // Check both basic placement AND minimum separation
+        if (canPlaceShip(grid, row, col, ship.size, horizontal) && 
+            checkMinimumSeparation(grid, row, col, ship.size, horizontal)) {
           const shipCells = [];
           for (let j = 0; j < ship.size; j++) {
             const r = horizontal ? row : row + j;
@@ -663,36 +755,88 @@ function BattleshipESL() {
         }
         attempts++;
       }
+      
+      // Fallback if we couldn't place with separation (should be rare)
+      if (!placed) {
+        attempts = 0;
+        while (!placed && attempts < 100) {
+          const horizontal = Math.random() > 0.5;
+          const row = Math.floor(Math.random() * GRID_SIZE);
+          const col = Math.floor(Math.random() * GRID_SIZE);
+          if (canPlaceShip(grid, row, col, ship.size, horizontal)) {
+            const shipCells = [];
+            for (let j = 0; j < ship.size; j++) {
+              const r = horizontal ? row : row + j;
+              const c = horizontal ? col + j : col;
+              grid[r][c] = { ship: i, part: j };
+              shipCells.push([r, c]);
+            }
+            ships.push({ ...ship, cells: shipCells, sunk: false });
+            placed = true;
+          }
+          attempts++;
+        }
+      }
     }
     
-    // Save to current player's state
-    if (setupPlayer === 1) {
+    if (gameMode === 'online-host') {
       setPlayer1(prev => ({ ...prev, grid, ships }));
     } else {
       setPlayer2(prev => ({ ...prev, grid, ships }));
     }
     
-    // Complete setup for this player
     completeSetup(grid, ships);
   };
 
-  // Battle Functions
+  // IMPROVED: Battle Functions with firing animation
   const fireWeapon = (row, col) => {
-    if (gameMode !== 'offline' && !isMyTurn) return;
+    if (!isMyTurn) return;
     
-    const attacker = gameMode === 'offline' ? (currentPlayer === 1 ? player1 : player2) : (gameMode === 'online-host' ? player1 : player2);
-    const defender = gameMode === 'offline' ? (currentPlayer === 1 ? player2 : player1) : (gameMode === 'online-host' ? player2 : player1);
+    const attacker = gameMode === 'online-host' ? player1 : player2;
     const weapon = WEAPONS[selectedWeapon];
     
     if (selectedWeapon !== 'simple' && attacker.weapons[selectedWeapon] <= 0) return;
     
-    // Check if already shot this cell
-    const attackerTracking = gameMode === 'offline' 
-      ? (currentPlayer === 1 ? player1.tracking : player2.tracking)
-      : (gameMode === 'online-host' ? player1.tracking : player2.tracking);
-    if (attackerTracking[row][col] !== null) return; // Already shot here
+    const attackerTracking = gameMode === 'online-host' ? player1.tracking : player2.tracking;
+    if (attackerTracking[row][col] !== null) return;
     
-    if (gameMode !== 'offline') {
+    // Trigger firing animation FIRST
+    const pattern = selectedWeapon === 'rain' ? generateRainPattern() : weapon.pattern;
+    const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]).filter(
+      ([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE
+    );
+    
+    setFiringAnimation({
+      weapon: selectedWeapon,
+      origin: [row, col],
+      targets: targetCells,
+      phase: 'launch'
+    });
+    setShowFiringAnimation(true);
+    
+    // Animation sequence: launch -> travel -> impact
+    setTimeout(() => {
+      setFiringAnimation(prev => ({ ...prev, phase: 'travel' }));
+    }, 300);
+    
+    setTimeout(() => {
+      setFiringAnimation(prev => ({ ...prev, phase: 'impact' }));
+    }, 800);
+    
+    // After animation completes, send the shot
+    setTimeout(() => {
+      setShowFiringAnimation(false);
+      setFiringAnimation(null);
+      
+      // Increment turn count and check for airdrop
+      setTurnCount(prev => {
+        const newCount = prev + 1;
+        if (newCount % AIRDROP_CONFIG.checkIntervalTurns === 0) {
+          setTimeout(() => checkAndSpawnAirdrop(), 100);
+        }
+        return newCount;
+      });
+      
       sendMessage({ type: 'shot', row, col, weapon: selectedWeapon });
       setIsMyTurn(false);
       setWaitingForOpponent(true);
@@ -704,117 +848,31 @@ function BattleshipESL() {
           weapons: { ...prev.weapons, [selectedWeapon]: prev.weapons[selectedWeapon] - 1 }
         }));
       }
-      return;
-    }
-    
-    // Offline mode
-    const pattern = selectedWeapon === 'rain' ? generateRainPattern() : weapon.pattern;
-    const results = [];
-    let gotHit = false, sunkShipName = null;
-    const defenderGrid = [...defender.grid.map(r => [...r])];
-    const newAttackerTracking = currentPlayer === 1 ? [...player1.tracking.map(r => [...r])] : [...player2.tracking.map(r => [...r])];
-    const newDefenderReceived = currentPlayer === 1 ? [...player2.received.map(r => [...r])] : [...player1.received.map(r => [...r])];
-    const defenderShips = [...defender.ships];
-    let shipsRemaining = defender.shipsRemaining;
-    let collectedGift = null;
-
-    const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]);
-    
-    targetCells.forEach(([r, c]) => {
-      if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
-        if (newAttackerTracking[r][c] === null) {
-          const cell = defenderGrid[r][c];
-          const giftIndex = defender.gifts.findIndex(g => g.row === r && g.col === c);
-          if (giftIndex !== -1) {
-            collectedGift = defender.gifts[giftIndex];
-            defender.gifts.splice(giftIndex, 1);
-          }
-          if (cell && cell.ship !== undefined) {
-            newAttackerTracking[r][c] = 'hit';
-            newDefenderReceived[r][c] = 'hit';
-            gotHit = true;
-            results.push({ row: r, col: c, result: 'hit' });
-            const ship = defenderShips[cell.ship];
-            const allHit = ship.cells.every(([sr, sc]) => newAttackerTracking[sr][sc] === 'hit');
-            if (allHit && !ship.sunk) {
-              ship.sunk = true;
-              shipsRemaining--;
-              sunkShipName = SHIPS[cell.ship].name;
-            }
-          } else {
-            newAttackerTracking[r][c] = 'miss';
-            newDefenderReceived[r][c] = 'miss';
-            results.push({ row: r, col: c, result: 'miss' });
-          }
-        }
-      }
-    });
-
-    const attackerWeapons = { ...attacker.weapons };
-    if (selectedWeapon !== 'simple') attackerWeapons[selectedWeapon]--;
-    if (collectedGift) attackerWeapons[collectedGift.weapon]++;
-
-    if (currentPlayer === 1) {
-      setPlayer1(prev => ({ ...prev, tracking: newAttackerTracking, weapons: attackerWeapons }));
-      setPlayer2(prev => ({ ...prev, received: newDefenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
-    } else {
-      setPlayer2(prev => ({ ...prev, tracking: newAttackerTracking, weapons: attackerWeapons }));
-      setPlayer1(prev => ({ ...prev, received: newDefenderReceived, ships: defenderShips, shipsRemaining, gifts: defender.gifts }));
-    }
-
-    setLastShot({ row, col });
-    setShotResults(results);
-    setExtraTurn(gotHit);
-    setSunkShip(sunkShipName);
-    setSelectedWeapon('simple');
-
-    if (shipsRemaining === 0) {
-      setWinner(currentPlayer);
-      setGamePhase('gameover');
-    } else {
-      setCurrentQuestion(getRandomQuestion(difficulty));
-      setGamePhase('question');
-    }
+    }, 1300);
   };
 
-  // Question Handling - FIXED v8: Retry on wrong answers
+  // Question Handling
   const handleAnswer = (index) => {
-    // Only the shooter can answer (not watching)
     if (isWatchingQuestion) return;
     
     setSelectedAnswer(index);
     const correct = index === currentQuestion.answer;
     setAnswerResult(correct);
 
-    // FIXED v7: Send selection immediately so defender can see
-    if (gameMode !== 'offline') {
-      sendMessage({ type: 'answer-selected', answerIndex: index });
-    }
+    sendMessage({ type: 'answer-selected', answerIndex: index });
 
     setTimeout(() => {
       if (correct) {
-        // Correct answer - proceed normally
-        if (gameMode !== 'offline') {
-          sendMessage({ type: 'question-answered', correct: true, gotHit: extraTurn });
-          
-          if (extraTurn) {
-            setIsMyTurn(true);
-            setGamePhase('battle');
-          } else {
-            setIsMyTurn(false);
-            setGamePhase('battle'); // FIXED v8: No waiting overlay
-          }
+        sendMessage({ type: 'question-answered', correct: true, gotHit: extraTurn });
+        
+        if (extraTurn) {
+          setIsMyTurn(true);
+          setGamePhase('battle');
         } else {
-          if (extraTurn) {
-            setGamePhase('battle');
-          } else {
-            const nextPlayer = currentPlayer === 1 ? 2 : 1;
-            setTransitionForPlayer(nextPlayer);
-            setCurrentPlayer(nextPlayer);
-            setGamePhase('transition');
-          }
+          setIsMyTurn(false);
+          setGamePhase('battle');
         }
-        // Clear question state
+        
         setCurrentQuestion(null);
         setSelectedAnswer(null);
         setAnswerResult(null);
@@ -823,42 +881,14 @@ function BattleshipESL() {
         setSunkShip(null);
         setIsWatchingQuestion(false);
       } else {
-        // FIXED v8: Wrong answer - give a new question, must retry
-        if (gameMode !== 'offline') {
-          // Send retry notification to defender
-          sendMessage({ type: 'question-retry' });
-        }
-        // Get new question and reset for retry
+        sendMessage({ type: 'question-retry' });
         const newQuestion = getRandomQuestion(difficulty);
         setCurrentQuestion(newQuestion);
         setSelectedAnswer(null);
         setAnswerResult(null);
-        // Send new question to defender so they can watch
-        if (gameMode !== 'offline') {
-          sendMessage({ type: 'new-question', question: newQuestion });
-        }
+        sendMessage({ type: 'new-question', question: newQuestion });
       }
     }, 1500);
-  };
-
-  // FIXED: Clear transition logic using explicit completion flags
-  const continueFromTransition = () => {
-    // FIXED: Clear transition state
-    setTransitionForPlayer(null);
-    
-    if (gameMode === 'offline') {
-      // Check what state we're in
-      if (player1SetupComplete && !player2SetupComplete) {
-        // Player 1 done, player 2 needs to setup
-        setGamePhase('setup');
-      } else if (player1SetupComplete && player2SetupComplete) {
-        // Both players done, start battle
-        setGamePhase('battle');
-      }
-    } else {
-      // Online mode - just go to battle
-      setGamePhase('battle');
-    }
   };
 
   // Render Functions
@@ -872,6 +902,10 @@ function BattleshipESL() {
       incomingShot.results.some(r => r.row === row && r.col === col);
     const incomingResult = hasIncomingHit ? 
       incomingShot.results.find(r => r.row === row && r.col === col)?.result : null;
+    
+    // Check if this cell is being targeted by firing animation
+    const isFiringTarget = showFiringAnimation && firingAnimation && 
+      firingAnimation.targets.some(([r, c]) => r === row && c === col);
     
     let className = 'cell';
     let content = '';
@@ -895,7 +929,7 @@ function BattleshipESL() {
       }
       if (gift && !hit) content = '🎁';
     } else {
-      // Enemy grid - FIXED v8: Show gifts as clickable targets!
+      // Enemy grid
       if (hit === 'hit') {
         className += ' hit';
         content = '💥';
@@ -903,23 +937,33 @@ function BattleshipESL() {
         className += ' miss';
         content = '💨';
       } else if (gift) {
-        // FIXED v8: Show gift boxes on enemy grid - shoot them to collect!
         className += ' enemy gift-cell';
         content = '🎁';
       } else {
         className += ' enemy';
       }
+      
+      // Firing animation target indicator
+      if (isFiringTarget) {
+        className += ` firing-target firing-${firingAnimation.phase}`;
+      }
     }
 
     const handleClick = () => {
       if (isSetup) placeShip(row, col);
-      // FIXED v8: Only allow firing when it's your turn
-      else if (!isOwnGrid && hit === null && gamePhase === 'battle' && (gameMode === 'offline' || isMyTurn)) fireWeapon(row, col);
+      else if (!isOwnGrid && hit === null && gamePhase === 'battle' && isMyTurn && !showFiringAnimation) {
+        fireWeapon(row, col);
+      }
     };
 
     return (
       <div key={`${row}-${col}`} className={className} onClick={handleClick}>
         {content}
+        {isFiringTarget && firingAnimation.phase === 'impact' && (
+          <span className="impact-anim">
+            {firingAnimation.weapon === 'nuclear' ? '☢️' : firingAnimation.weapon === 'big' ? '💣' : '🎯'}
+          </span>
+        )}
       </div>
     );
   };
@@ -945,21 +989,7 @@ function BattleshipESL() {
     </div>
   );
 
-  // Get transition screen message
-  const getTransitionInfo = () => {
-    if (gameMode === 'offline') {
-      if (player1SetupComplete && !player2SetupComplete) {
-        return { title: 'Player 2', message: 'Get ready to place your ships!' };
-      } else if (player1SetupComplete && player2SetupComplete) {
-        // FIXED: Use transitionForPlayer to avoid async state issues
-        const playerNum = transitionForPlayer || currentPlayer;
-        return { title: `Player ${playerNum}`, message: 'Get ready for your turn!' };
-      }
-    }
-    return { title: '', message: '' };
-  };
-
-  // Styles
+  // Styles - IMPROVED: Better centering and firing animations
   const styles = `
     .game-container {
       min-height: 100vh;
@@ -968,10 +998,14 @@ function BattleshipESL() {
       font-family: 'Segoe UI', system-ui, sans-serif;
       padding: 20px;
       overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .header {
       text-align: center;
       margin-bottom: 20px;
+      width: 100%;
     }
     .title {
       font-size: 2.5rem;
@@ -994,7 +1028,9 @@ function BattleshipESL() {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 70vh;
+      flex: 1;
+      width: 100%;
+      min-height: 60vh;
     }
     .menu-panel {
       background: rgba(255, 255, 255, 0.05);
@@ -1037,6 +1073,16 @@ function BattleshipESL() {
     .diff-btn:hover, .diff-btn.active {
       border-color: #00d9ff;
       background: rgba(0, 217, 255, 0.1);
+    }
+    .diff-btn.active {
+      box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+    }
+    .difficulty-hint {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 10px;
+      font-style: italic;
     }
     .menu-btn {
       width: 100%;
@@ -1157,14 +1203,19 @@ function BattleshipESL() {
       box-shadow: 0 0 10px #22c55e;
     }
     
-    /* Setup Styles */
+    /* Setup Styles - IMPROVED CENTERING */
     .setup-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
       max-width: 600px;
-      margin: 0 auto;
     }
     .setup-header {
       text-align: center;
       margin-bottom: 20px;
+      width: 100%;
     }
     .player-indicator {
       font-size: 1.5rem;
@@ -1303,6 +1354,49 @@ function BattleshipESL() {
       font-size: 0.9rem;
     }
     
+    /* Firing Animation Styles */
+    .cell.firing-target {
+      position: relative;
+      overflow: visible;
+    }
+    .cell.firing-target.firing-launch {
+      background: rgba(255, 200, 0, 0.3);
+      animation: targetLock 0.3s ease-out;
+    }
+    .cell.firing-target.firing-travel {
+      background: rgba(255, 150, 0, 0.5);
+      animation: missileIncoming 0.5s ease-in;
+    }
+    .cell.firing-target.firing-impact {
+      background: rgba(255, 100, 0, 0.7);
+      animation: explosion 0.5s ease-out;
+    }
+    @keyframes targetLock {
+      0% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.8); }
+      100% { box-shadow: 0 0 20px 5px rgba(255, 200, 0, 0.4); }
+    }
+    @keyframes missileIncoming {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes explosion {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); box-shadow: 0 0 30px 10px rgba(255, 100, 0, 0.8); }
+      100% { transform: scale(1); }
+    }
+    .impact-anim {
+      position: absolute;
+      font-size: 1.5rem;
+      animation: impactBurst 0.5s ease-out forwards;
+      z-index: 10;
+    }
+    @keyframes impactBurst {
+      0% { transform: scale(0); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    
     /* Incoming shot animation */
     .cell.incoming-shot {
       animation: incoming-pulse 0.5s ease-in-out infinite;
@@ -1328,17 +1422,20 @@ function BattleshipESL() {
       100% { transform: scale(1); }
     }
     
-    /* Battle Styles - FIXED v8: Responsive layout */
+    /* Battle Styles - IMPROVED CENTERING */
     .battle-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       width: 100%;
       max-width: 1200px;
-      margin: 0 auto;
       padding: 0 10px;
       box-sizing: border-box;
     }
     .battle-header {
       text-align: center;
       margin-bottom: 15px;
+      width: 100%;
     }
     .turn-indicator {
       font-size: 1.3rem;
@@ -1454,6 +1551,29 @@ function BattleshipESL() {
       font-size: 0.8rem;
       color: #00d9ff;
       font-weight: bold;
+    }
+    
+    /* Airdrop notification */
+    .airdrop-notification {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1rem;
+      z-index: 100;
+      animation: airdropSlide 3s ease-in-out forwards;
+      box-shadow: 0 5px 20px rgba(251, 191, 36, 0.4);
+    }
+    @keyframes airdropSlide {
+      0% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+      10% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      80% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      100% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
     }
     
     /* Question Overlay */
@@ -1573,48 +1693,6 @@ function BattleshipESL() {
       color: #ef4444;
     }
     
-    /* Transition Screen */
-    .transition-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.95);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-    .transition-content {
-      text-align: center;
-    }
-    .transition-player {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #00d9ff;
-      margin-bottom: 20px;
-    }
-    .transition-message {
-      font-size: 1.2rem;
-      color: #8892b0;
-      margin-bottom: 30px;
-    }
-    .ready-btn {
-      padding: 15px 50px;
-      font-size: 1.2rem;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #00d9ff, #00ff88);
-      color: #1a1a2e;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    .ready-btn:hover {
-      transform: scale(1.05);
-    }
-    
     /* Game Over */
     .gameover-overlay {
       position: fixed;
@@ -1721,9 +1799,7 @@ function BattleshipESL() {
       margin-top: 10px;
     }
     
-    /* Responsive - FIXED v8: Comprehensive breakpoints */
-    
-    /* Large tablets and small desktops */
+    /* Responsive */
     @media (max-width: 900px) {
       .grids-container {
         gap: 20px;
@@ -1740,7 +1816,6 @@ function BattleshipESL() {
       .grid-labels-side .label { width: 26px; height: 32px; }
     }
     
-    /* Tablets */
     @media (max-width: 768px) {
       .title {
         font-size: 1.4rem;
@@ -1783,7 +1858,6 @@ function BattleshipESL() {
       .weapon-count { font-size: 0.6rem; }
     }
     
-    /* Large phones (landscape or larger phones) */
     @media (max-width: 600px) {
       .title {
         font-size: 1.2rem;
@@ -1814,7 +1888,6 @@ function BattleshipESL() {
       }
     }
     
-    /* Small phones (portrait) */
     @media (max-width: 400px) {
       .game-container {
         padding: 8px;
@@ -1863,7 +1936,6 @@ function BattleshipESL() {
       .weapon-count { font-size: 0.55rem; }
     }
     
-    /* Very small phones */
     @media (max-width: 360px) {
       .grid {
         grid-template-columns: repeat(10, 24px);
@@ -1879,7 +1951,15 @@ function BattleshipESL() {
     }
   `;
 
-  const transitionInfo = getTransitionInfo();
+  // Get difficulty hint text
+  const getDifficultyHint = () => {
+    switch(difficulty) {
+      case 'easy': return 'Basic grammar: be verbs, simple present, articles';
+      case 'medium': return 'Intermediate: perfect tenses, conditionals, passive';
+      case 'hard': return 'Advanced: inversion, subjunctive, complex structures';
+      default: return '';
+    }
+  };
 
   return (
     <div className="game-container">
@@ -1890,11 +1970,16 @@ function BattleshipESL() {
         <p className="subtitle">Naval Combat Grammar Challenge</p>
       </div>
 
-      {/* MENU PHASE */}
+      {/* Airdrop Notification */}
+      {newAirdropMessage && (
+        <div className="airdrop-notification">{newAirdropMessage}</div>
+      )}
+
+      {/* MENU PHASE - ONLINE ONLY */}
       {gamePhase === 'menu' && (
         <div className="menu-container">
           <div className="menu-panel">
-            <div className="menu-title">🎮 Select Game Mode</div>
+            <div className="menu-title">🎮 Online Multiplayer</div>
             
             <div className="difficulty-selector">
               <span className="difficulty-label">Grammar Difficulty</span>
@@ -1903,13 +1988,10 @@ function BattleshipESL() {
                 <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => setDifficulty('medium')}>Medium</button>
                 <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => setDifficulty('hard')}>Hard</button>
               </div>
+              <div className="difficulty-hint">{getDifficultyHint()}</div>
             </div>
-
-            <button className="menu-btn primary" onClick={() => { setGameMode('offline'); setGamePhase('setup'); }}>
-              👥 Local 2 Players
-            </button>
             
-            <button className="menu-btn" onClick={() => { setGameMode('online-host'); initializePeer(true); }}>
+            <button className="menu-btn primary" onClick={() => { setGameMode('online-host'); initializePeer(true); }}>
               🌐 Host Online Game
             </button>
             
@@ -1978,7 +2060,7 @@ function BattleshipESL() {
       {gamePhase === 'setup' && (
         <div className="setup-container">
           <div className="setup-header">
-            <div className="player-indicator">{gameMode === 'offline' ? `Player ${setupPlayer}` : 'Your'} Fleet Setup</div>
+            <div className="player-indicator">Your Fleet Setup</div>
             {currentShipIndex < SHIPS.length && (
               <div className="ship-to-place">
                 <div className="ship-preview">
@@ -1996,7 +2078,17 @@ function BattleshipESL() {
               <button className="control-btn" onClick={randomPlaceShips}>Random</button>
             </div>
           </div>
-          {renderGrid(true, setupPlayer === 1 ? player1 : player2, true)}
+          {renderGrid(true, gameMode === 'online-host' ? player1 : player2, true)}
+        </div>
+      )}
+
+      {/* Waiting for opponent overlay */}
+      {waitingForOpponent && gamePhase === 'setup' && (
+        <div className="waiting-overlay">
+          <div className="waiting-content">
+            <div className="waiting-spinner"></div>
+            <div>Waiting for opponent to finish setup...</div>
+          </div>
         </div>
       )}
 
@@ -2004,11 +2096,8 @@ function BattleshipESL() {
       {gamePhase === 'battle' && (
         <div className="battle-container">
           <div className="battle-header">
-            {/* FIXED v8: Show turn status inline, no overlay */}
-            <div className={`turn-indicator ${!isMyTurn && gameMode !== 'offline' ? 'waiting' : ''}`}>
-              {gameMode === 'offline' 
-                ? `Player ${currentPlayer}'s Turn` 
-                : (isMyTurn ? '🎯 Your Turn - Select a Target!' : '⏳ Opponent\'s Turn - Watch the Boards')}
+            <div className={`turn-indicator ${!isMyTurn ? 'waiting' : ''}`}>
+              {isMyTurn ? '🎯 Your Turn - Select a Target!' : '⏳ Opponent\'s Turn - Watch the Boards'}
             </div>
           </div>
           <div className="grids-container">
@@ -2016,21 +2105,17 @@ function BattleshipESL() {
               <div className="grid-title">🎯 Enemy Waters</div>
               {renderGrid(
                 false, 
-                gameMode === 'offline' 
-                  ? (currentPlayer === 1 ? player2 : player1) 
-                  : (gameMode === 'online-host' ? player2 : player1),
+                gameMode === 'online-host' ? player2 : player1,
                 false,
-                gameMode === 'offline'
-                  ? (currentPlayer === 1 ? player1.tracking : player2.tracking)
-                  : (gameMode === 'online-host' ? player1.tracking : player2.tracking)
+                gameMode === 'online-host' ? player1.tracking : player2.tracking
               )}
             </div>
             <div className="grid-section">
               <div className="grid-title">⚓ Your Fleet</div>
-              {renderGrid(true, gameMode === 'offline' ? (currentPlayer === 1 ? player1 : player2) : (gameMode === 'online-host' ? player1 : player2))}
+              {renderGrid(true, gameMode === 'online-host' ? player1 : player2)}
               <div className="ships-status">
                 {SHIPS.map((ship, idx) => {
-                  const playerShips = gameMode === 'offline' ? (currentPlayer === 1 ? player1.ships : player2.ships) : (gameMode === 'online-host' ? player1.ships : player2.ships);
+                  const playerShips = gameMode === 'online-host' ? player1.ships : player2.ships;
                   const isSunk = playerShips[idx]?.sunk;
                   return <div key={idx} className={`ship-status ${isSunk ? 'sunk' : ''}`}>{ship.name}</div>;
                 })}
@@ -2041,10 +2126,10 @@ function BattleshipESL() {
             <div className="weapons-title">⚔️ Arsenal ⚔️</div>
             <div className="weapons-grid">
               {Object.entries(WEAPONS).map(([key, weapon]) => {
-                const playerWeapons = gameMode === 'offline' ? (currentPlayer === 1 ? player1.weapons : player2.weapons) : (gameMode === 'online-host' ? player1.weapons : player2.weapons);
+                const playerWeapons = gameMode === 'online-host' ? player1.weapons : player2.weapons;
                 const count = playerWeapons[key];
                 return (
-                  <button key={key} className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} onClick={() => setSelectedWeapon(key)} disabled={key !== 'simple' && count <= 0 || (!isMyTurn && gameMode !== 'offline')}>
+                  <button key={key} className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} onClick={() => setSelectedWeapon(key)} disabled={key !== 'simple' && count <= 0 || !isMyTurn || showFiringAnimation}>
                     <span className="weapon-icon">{weapon.icon}</span>
                     <span className="weapon-name">{weapon.name}</span>
                     <span className="weapon-count">{key === 'simple' ? '∞' : count}</span>
@@ -2060,9 +2145,7 @@ function BattleshipESL() {
       {gamePhase === 'question' && currentQuestion && (
         <div className="question-overlay">
           <div className="question-modal">
-            {/* FIXED v7: Different display for shooter vs watcher */}
             {isWatchingQuestion ? (
-              // Defender watching shooter answer
               <>
                 <div className={`shot-result ${incomingShot?.gotHit ? 'hit' : 'miss'}`}>
                   <div className="shot-result-text">{incomingShot?.gotHit ? '💥 YOUR SHIP WAS HIT!' : '💨 THEY MISSED!'}</div>
@@ -2071,7 +2154,6 @@ function BattleshipESL() {
                 <div className="watching-indicator">👀 Opponent is answering...</div>
               </>
             ) : (
-              // Shooter answering
               <div className={`shot-result ${shotResults.some(r => r.result === 'hit') ? 'hit' : 'miss'}`}>
                 <div className="shot-result-text">{shotResults.some(r => r.result === 'hit') ? '💥 HIT!' : '💨 MISS!'}</div>
                 <div>{shotResults.filter(r => r.result === 'hit').length} hit(s), {shotResults.filter(r => r.result === 'miss').length} miss(es)</div>
@@ -2079,7 +2161,7 @@ function BattleshipESL() {
                 {extraTurn && <div className="extra-turn-notice">⚡ Answer correctly for another turn!</div>}
               </div>
             )}
-            <div className="question-header">📚 Grammar Challenge</div>
+            <div className="question-header">📚 Grammar Challenge ({difficulty.charAt(0).toUpperCase() + difficulty.slice(1)})</div>
             <div className="question-text">{currentQuestion.q}</div>
             <div className="options-grid">
               {currentQuestion.options.map((option, idx) => (
@@ -2093,18 +2175,7 @@ function BattleshipESL() {
                 </button>
               ))}
             </div>
-            {answerResult !== null && <div className={`answer-feedback ${answerResult ? 'correct' : 'incorrect'}`}>{answerResult ? '✓ Correct!' : '✗ Incorrect!'}</div>}
-          </div>
-        </div>
-      )}
-
-      {/* TRANSITION SCREEN */}
-      {gamePhase === 'transition' && (
-        <div className="transition-overlay">
-          <div className="transition-content">
-            <div className="transition-player">{transitionInfo.title}</div>
-            <div className="transition-message">{transitionInfo.message}</div>
-            <button className="ready-btn" onClick={continueFromTransition}>Ready</button>
+            {answerResult !== null && <div className={`answer-feedback ${answerResult ? 'correct' : 'incorrect'}`}>{answerResult ? '✓ Correct!' : '✗ Try again!'}</div>}
           </div>
         </div>
       )}
@@ -2114,7 +2185,7 @@ function BattleshipESL() {
         <div className="gameover-overlay">
           <div className="gameover-content">
             <div className="gameover-title">🏆 Victory! 🏆</div>
-            <div className="winner-text">{gameMode === 'offline' ? `Player ${winner} Wins!` : (winner === 1 ? 'You Win!' : 'You Lose!')}</div>
+            <div className="winner-text">{winner === (gameMode === 'online-host' ? 1 : 2) ? 'You Win!' : 'You Lose!'}</div>
             <button className="gameover-btn" onClick={() => window.location.reload()}>Play Again</button>
           </div>
         </div>
