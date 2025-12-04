@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { height: 100%; }
@@ -16,7 +17,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.1 (CONNECTION + DIFFICULTY SYNC FIX)
+// BATTLESHIP ESL - VERSION 9.2 (CONNECTION FIX + UI RESTRUCTURE)
 // ============================================
 
 // Grammar Questions Database
@@ -46,12 +47,7 @@ const grammarQuestions = {
     { q: "This book is ___.", options: ["my", "mine", "me", "I"], answer: 1 },
     { q: "I brush my ___ every morning.", options: ["tooth", "teeth", "tooths", "teeths"], answer: 1 },
     { q: "___ are you from?", options: ["What", "Who", "Where", "When"], answer: 2 },
-    { q: "The dog is ___ the house.", options: ["inside", "on", "at", "to"], answer: 0 },
-    { q: "I ___ my homework now.", options: ["do", "doing", "am doing", "does"], answer: 2 },
-    { q: "She ___ a red dress.", options: ["wear", "wears", "wearing", "wore"], answer: 1 },
-    { q: "The book is ___ the desk.", options: ["on", "in", "at", "to"], answer: 0 },
-    { q: "We ___ English at school.", options: ["learn", "learns", "learning", "learned"], answer: 0 },
-    { q: "My friend ___ football.", options: ["play", "plays", "playing", "played"], answer: 1 }
+    { q: "The dog is ___ the house.", options: ["inside", "on", "at", "to"], answer: 0 }
   ],
   medium: [
     { q: "She ___ finished her homework.", options: ["have", "has", "had", "having"], answer: 1 },
@@ -73,12 +69,7 @@ const grammarQuestions = {
     { q: "By next year, I ___ graduated.", options: ["will", "will have", "would", "have"], answer: 1 },
     { q: "___ of the students passed.", options: ["Most", "Much", "Many", "A lot"], answer: 0 },
     { q: "He denied ___ the window.", options: ["break", "broke", "breaking", "to break"], answer: 2 },
-    { q: "I'd rather ___ at home.", options: ["stay", "stayed", "staying", "to stay"], answer: 0 },
-    { q: "She ___ to the gym every day.", options: ["used to go", "use to go", "uses to go", "used going"], answer: 0 },
-    { q: "The letter ___ yesterday.", options: ["sent", "was sent", "send", "has sent"], answer: 1 },
-    { q: "I'll call you ___ I arrive.", options: ["when", "while", "during", "until"], answer: 0 },
-    { q: "He's the man ___ car was stolen.", options: ["who", "which", "whose", "whom"], answer: 2 },
-    { q: "You ___ see a doctor.", options: ["should", "would", "must to", "can to"], answer: 0 }
+    { q: "I'd rather ___ at home.", options: ["stay", "stayed", "staying", "to stay"], answer: 0 }
   ],
   hard: [
     { q: "Had I known, I ___ differently.", options: ["would act", "would have acted", "will act", "acted"], answer: 1 },
@@ -100,12 +91,7 @@ const grammarQuestions = {
     { q: "Should you need help, ___ me.", options: ["call", "called", "calling", "to call"], answer: 0 },
     { q: "Never ___ such nonsense!", options: ["I heard", "have I heard", "I have heard", "did I heard"], answer: 1 },
     { q: "The book, ___ I bought yesterday, is great.", options: ["that", "which", "what", "whose"], answer: 1 },
-    { q: "___ the circumstances, he did well.", options: ["Given", "Giving", "Gave", "Give"], answer: 0 },
-    { q: "Seldom ___ such talent.", options: ["we see", "do we see", "we do see", "see we"], answer: 1 },
-    { q: "Only after he left ___ the truth.", options: ["I realized", "did I realize", "I did realize", "realized I"], answer: 1 },
-    { q: "It's time we ___ going.", options: ["get", "got", "have got", "will get"], answer: 1 },
-    { q: "___ he to come, I would leave.", options: ["Were", "Was", "If", "Should"], answer: 0 },
-    { q: "On no account ___ be disturbed.", options: ["he must", "must he", "he should", "should he"], answer: 1 }
+    { q: "___ the circumstances, he did well.", options: ["Given", "Giving", "Gave", "Give"], answer: 0 }
   ]
 };
 
@@ -126,7 +112,6 @@ const WEAPONS = {
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
 };
 
-// Airdrop configuration
 const AIRDROP_CONFIG = {
   checkIntervalTurns: 2,
   baseChance: 0.12,
@@ -162,9 +147,9 @@ function BattleshipESL() {
   const { useState, useEffect, useCallback, useRef } = React;
 
   // Game state
-  const [gameMode, setGameMode] = useState(null); // null, 'online-host', 'online-joiner'
+  const [gameMode, setGameMode] = useState(null);
   const [gamePhase, setGamePhase] = useState('menu');
-  const [difficulty, setDifficulty] = useState('easy');
+  const [difficulty, setDifficulty] = useState('medium');
   const [winner, setWinner] = useState(null);
 
   // Player states
@@ -188,19 +173,16 @@ function BattleshipESL() {
     shipsRemaining: 5
   });
 
-  // Setup completion tracking
+  // Setup state
   const [player1SetupComplete, setPlayer1SetupComplete] = useState(false);
   const [player2SetupComplete, setPlayer2SetupComplete] = useState(false);
   const [opponentSetupReceived, setOpponentSetupReceived] = useState(false);
-
-  // Setup state
   const [currentShipIndex, setCurrentShipIndex] = useState(0);
   const [isHorizontal, setIsHorizontal] = useState(true);
   const [placedShips, setPlacedShips] = useState([]);
 
   // Battle state
   const [selectedWeapon, setSelectedWeapon] = useState('simple');
-  const [lastShot, setLastShot] = useState(null);
   const [shotResults, setShotResults] = useState([]);
   const [extraTurn, setExtraTurn] = useState(false);
   const [sunkShip, setSunkShip] = useState(null);
@@ -214,13 +196,11 @@ function BattleshipESL() {
   // Online state
   const [peerId, setPeerId] = useState('');
   const [remotePeerId, setRemotePeerId] = useState('');
-  const [peer, setPeer] = useState(null);
-  const [conn, setConn] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [connectionError, setConnectionError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('');
   
   // Animation states
   const [incomingShot, setIncomingShot] = useState(null);
@@ -230,50 +210,27 @@ function BattleshipESL() {
   
   // Airdrop state
   const [turnCount, setTurnCount] = useState(0);
-  const [airdropCheckCount, setAirdropCheckCount] = useState(0);
   const [airdropsSinceLastSpawn, setAirdropsSinceLastSpawn] = useState(0);
   const [totalAirdrops, setTotalAirdrops] = useState(0);
   const [newAirdropMessage, setNewAirdropMessage] = useState(null);
 
-  // Refs
+  // Refs for callbacks
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
   const difficultyRef = useRef(difficulty);
-  const mySetupCompleteRef = useRef(false);
   const waitingRef = useRef(false);
   const player1Ref = useRef(player1);
   const player2Ref = useRef(player2);
 
-  useEffect(() => {
-    gameModeRef.current = gameMode;
-  }, [gameMode]);
+  // Keep refs in sync
+  useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+  useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
+  useEffect(() => { player1Ref.current = player1; }, [player1]);
+  useEffect(() => { player2Ref.current = player2; }, [player2]);
+  useEffect(() => { waitingRef.current = waitingForOpponent; }, [waitingForOpponent]);
 
-  useEffect(() => {
-    difficultyRef.current = difficulty;
-  }, [difficulty]);
-
-  useEffect(() => {
-    player1Ref.current = player1;
-  }, [player1]);
-
-  useEffect(() => {
-    player2Ref.current = player2;
-  }, [player2]);
-
-  useEffect(() => {
-    if (gameMode === 'online-host') {
-      mySetupCompleteRef.current = player1SetupComplete;
-    } else if (gameMode === 'online-joiner') {
-      mySetupCompleteRef.current = player2SetupComplete;
-    }
-  }, [player1SetupComplete, player2SetupComplete, gameMode]);
-
-  useEffect(() => {
-    waitingRef.current = waitingForOpponent;
-  }, [waitingForOpponent]);
-
-  // Copy to clipboard function
+  // Copy to clipboard
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -291,139 +248,19 @@ function BattleshipESL() {
     }
   };
 
-  // Online Multiplayer Functions
-  const initializePeer = useCallback((isHost) => {
-    // Check if PeerJS is already loaded
-    if (window.Peer) {
-      createPeer(isHost);
-      return;
-    }
-    
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-    script.onload = () => createPeer(isHost);
-    script.onerror = () => {
-      setConnectionError('Failed to load networking library. Please refresh and try again.');
-    };
-    document.head.appendChild(script);
-  }, []);
-
-  const createPeer = (isHost) => {
-    try {
-      const newPeer = new window.Peer();
-      
-      newPeer.on('open', (id) => {
-        console.log('Peer opened with ID:', id);
-        setPeerId(id);
-        peerRef.current = newPeer;
-        setPeer(newPeer);
-        if (isHost) setIsMyTurn(true);
-        setConnectionError(null);
-      });
-      
-      newPeer.on('connection', (connection) => {
-        console.log('Received connection from:', connection.peer);
-        connRef.current = connection;
-        setConn(connection);
-        setupConnection(connection, true); // true = I am host receiving connection
-      });
-      
-      newPeer.on('error', (err) => {
-        console.error('Peer error:', err);
-        setConnectionError('Connection error: ' + err.type);
-      });
-      
-      newPeer.on('disconnected', () => {
-        console.log('Peer disconnected');
-        setConnectionError('Disconnected from server. Trying to reconnect...');
-        newPeer.reconnect();
-      });
-    } catch (err) {
-      console.error('Failed to create peer:', err);
-      setConnectionError('Failed to create connection. Please refresh and try again.');
-    }
-  };
-
-  const connectToPeer = useCallback((remoteId) => {
-    if (peerRef.current && remoteId) {
-      console.log('Connecting to peer:', remoteId);
-      setConnectionError(null);
-      
-      try {
-        const connection = peerRef.current.connect(remoteId, {
-          reliable: true
-        });
-        
-        connection.on('error', (err) => {
-          console.error('Connection error:', err);
-          setConnectionError('Failed to connect: ' + err);
-        });
-        
-        connRef.current = connection;
-        setConn(connection);
-        setupConnection(connection, false); // false = I am joiner initiating connection
-      } catch (err) {
-        console.error('Connect error:', err);
-        setConnectionError('Failed to connect. Check the game code and try again.');
-      }
-    }
-  }, []);
-
-  const setupConnection = (connection, isHost) => {
-    connection.on('open', () => {
-      console.log('Connection opened! isHost:', isHost);
-      setIsConnected(true);
-      setConnectionError(null);
-      
-      // FIXED: Host sends game settings (difficulty) to joiner
-      if (isHost) {
-        // Host sends difficulty setting
-        setTimeout(() => {
-          connection.send({ 
-            type: 'game-settings', 
-            difficulty: difficultyRef.current 
-          });
-        }, 100);
-      }
-      
-      setGamePhase('setup');
-    });
-    
-    connection.on('data', (data) => handleOnlineMessage(data));
-    
-    connection.on('close', () => {
-      console.log('Connection closed');
-      setIsConnected(false);
-      setConnectionError('Connection closed. Your opponent may have disconnected.');
-    });
-    
-    connection.on('error', (err) => {
-      console.error('Connection error:', err);
-      setConnectionError('Connection error occurred.');
-    });
-  };
-
-  const sendMessage = useCallback((message) => {
-    if (connRef.current && connRef.current.open) {
-      connRef.current.send(message);
-    } else {
-      console.warn('Cannot send message - connection not open');
-    }
-  }, []);
-
-  const handleOnlineMessage = (data) => {
-    const currentGameMode = gameModeRef.current;
-    console.log('Received message:', data.type, currentGameMode);
+  // Message handler - defined first so it can be used in connection setup
+  const handleMessage = useCallback((data) => {
+    console.log('📨 Received:', data.type);
     
     switch (data.type) {
-      // FIXED: Handle game settings from host
       case 'game-settings':
-        console.log('Received game settings, difficulty:', data.difficulty);
+        console.log('Setting difficulty to:', data.difficulty);
         setDifficulty(data.difficulty);
         break;
         
       case 'setup-complete':
-        if (currentGameMode === 'online-host') {
+        const isHost = gameModeRef.current === 'online-host';
+        if (isHost) {
           setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
           setPlayer2SetupComplete(true);
         } else {
@@ -431,7 +268,6 @@ function BattleshipESL() {
           setPlayer1SetupComplete(true);
         }
         setOpponentSetupReceived(true);
-        
         if (waitingRef.current) {
           setWaitingForOpponent(false);
           setGamePhase('battle');
@@ -461,14 +297,12 @@ function BattleshipESL() {
           setShotResults([]);
           setExtraTurn(false);
           setSunkShip(null);
-          
           if (data.correct && data.gotHit) {
             setIsMyTurn(false);
-            setGamePhase('battle');
           } else {
             setIsMyTurn(true);
-            setGamePhase('battle');
           }
+          setGamePhase('battle');
         }, 1500);
         break;
       
@@ -489,28 +323,153 @@ function BattleshipESL() {
         break;
         
       case 'airdrop-spawned':
-        if (currentGameMode === 'online-host') {
+        const isHost2 = gameModeRef.current === 'online-host';
+        if (isHost2) {
           setPlayer2(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
         } else {
           setPlayer1(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
         }
         break;
     }
-  };
+  }, []);
 
+  // Send message helper
+  const sendMessage = useCallback((message) => {
+    if (connRef.current && connRef.current.open) {
+      console.log('📤 Sending:', message.type);
+      connRef.current.send(message);
+    } else {
+      console.warn('Cannot send - connection not open');
+    }
+  }, []);
+
+  // Initialize as HOST
+  const hostGame = useCallback(() => {
+    setGameMode('online-host');
+    setConnectionStatus('Creating game...');
+    
+    const peer = new Peer();
+    peerRef.current = peer;
+    
+    peer.on('open', (id) => {
+      console.log('🎮 Host ready with ID:', id);
+      setPeerId(id);
+      setConnectionStatus('Waiting for opponent...');
+      setIsMyTurn(true); // Host goes first
+    });
+    
+    peer.on('connection', (conn) => {
+      console.log('👋 Opponent connecting...');
+      connRef.current = conn;
+      
+      conn.on('open', () => {
+        console.log('✅ Connection established (host side)');
+        setIsConnected(true);
+        setConnectionStatus('Connected!');
+        
+        // Send game settings to joiner
+        setTimeout(() => {
+          conn.send({ type: 'game-settings', difficulty: difficultyRef.current });
+          console.log('📤 Sent difficulty:', difficultyRef.current);
+          
+          // Move to setup after a brief delay
+          setTimeout(() => setGamePhase('setup'), 500);
+        }, 100);
+      });
+      
+      conn.on('data', handleMessage);
+      
+      conn.on('close', () => {
+        console.log('Connection closed');
+        setIsConnected(false);
+        setConnectionStatus('Opponent disconnected');
+      });
+      
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+        setConnectionStatus('Connection error');
+      });
+    });
+    
+    peer.on('error', (err) => {
+      console.error('Peer error:', err);
+      setConnectionStatus('Error: ' + err.type);
+    });
+  }, [handleMessage]);
+
+  // Initialize as JOINER
+  const joinGame = useCallback(() => {
+    setGameMode('online-joiner');
+    setConnectionStatus('Initializing...');
+    
+    const peer = new Peer();
+    peerRef.current = peer;
+    
+    peer.on('open', (id) => {
+      console.log('🎮 Joiner ready with ID:', id);
+      setPeerId(id);
+      setConnectionStatus('Ready to connect');
+      setIsMyTurn(false); // Joiner goes second
+    });
+    
+    peer.on('error', (err) => {
+      console.error('Peer error:', err);
+      setConnectionStatus('Error: ' + err.type);
+    });
+  }, []);
+
+  // Connect to host (joiner only)
+  const connectToHost = useCallback(() => {
+    if (!peerRef.current || !remotePeerId.trim()) {
+      setConnectionStatus('Enter a valid game code');
+      return;
+    }
+    
+    setConnectionStatus('Connecting...');
+    console.log('🔗 Connecting to:', remotePeerId.trim());
+    
+    const conn = peerRef.current.connect(remotePeerId.trim(), { reliable: true });
+    connRef.current = conn;
+    
+    conn.on('open', () => {
+      console.log('✅ Connection established (joiner side)');
+      setIsConnected(true);
+      setConnectionStatus('Connected! Waiting for game settings...');
+    });
+    
+    conn.on('data', (data) => {
+      handleMessage(data);
+      // If we receive game-settings, move to setup
+      if (data.type === 'game-settings') {
+        setTimeout(() => setGamePhase('setup'), 500);
+      }
+    });
+    
+    conn.on('close', () => {
+      console.log('Connection closed');
+      setIsConnected(false);
+      setConnectionStatus('Host disconnected');
+    });
+    
+    conn.on('error', (err) => {
+      console.error('Connection error:', err);
+      setConnectionStatus('Failed to connect - check the code');
+    });
+  }, [remotePeerId, handleMessage]);
+
+  // Handle incoming shot
   const handleIncomingShot = (data) => {
     const { row, col, weapon } = data;
-    const currentGameMode = gameModeRef.current;
+    const isHost = gameModeRef.current === 'online-host';
     const pattern = weapon === 'rain' ? generateRainPattern() : WEAPONS[weapon].pattern;
     const results = [];
     let gotHit = false;
     
     setWaitingForOpponent(false);
     
-    const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
-    const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
+    const myPlayer = isHost ? player1Ref.current : player2Ref.current;
+    const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
     
-    const myGrid = myPlayer.grid.map(r => [...r]);
     const newReceived = myPlayer.received.map(r => [...r]);
     let shipsRemaining = myPlayer.shipsRemaining;
     let sunkShipName = null;
@@ -523,7 +482,7 @@ function BattleshipESL() {
     targetCells.forEach(([r, c]) => {
       if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
         if (newReceived[r][c] === null) {
-          const cell = myGrid[r][c];
+          const cell = myPlayer.grid[r][c];
           
           const giftIndex = myGifts.findIndex(g => g.row === r && g.col === c);
           if (giftIndex !== -1 && !collectedGift) {
@@ -580,7 +539,7 @@ function BattleshipESL() {
       setIncomingShot(null);
       
       if (shipsRemaining === 0) {
-        setWinner(currentGameMode === 'online-host' ? 2 : 1);
+        setWinner(isHost ? 2 : 1);
         setGamePhase('gameover');
       } else {
         setCurrentQuestion(question);
@@ -590,15 +549,16 @@ function BattleshipESL() {
     }, 2000);
   };
 
+  // Handle shot result
   const handleShotResult = (data) => {
-    const currentGameMode = gameModeRef.current;
+    const isHost = gameModeRef.current === 'online-host';
     setWaitingForOpponent(false);
     setShotResults(data.results);
     
-    const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
+    const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
     
     setMyPlayer(prev => {
-      const newTracking = [...prev.tracking.map(r => [...r])];
+      const newTracking = prev.tracking.map(r => [...r]);
       data.results.forEach(({ row, col, result }) => {
         newTracking[row][col] = result;
       });
@@ -612,7 +572,7 @@ function BattleshipESL() {
     if (data.sunkShip) setSunkShip(data.sunkShip);
     
     if (data.gameOver) {
-      setWinner(currentGameMode === 'online-host' ? 1 : 2);
+      setWinner(isHost ? 1 : 2);
       setGamePhase('gameover');
     } else {
       setExtraTurn(data.gotHit);
@@ -622,7 +582,7 @@ function BattleshipESL() {
     }
   };
 
-  // Ship Placement Functions
+  // Ship Placement
   const canPlaceShip = (grid, row, col, size, horizontal) => {
     for (let i = 0; i < size; i++) {
       const r = horizontal ? row : row + i;
@@ -636,16 +596,13 @@ function BattleshipESL() {
     for (let i = 0; i < size; i++) {
       const r = horizontal ? row : row + i;
       const c = horizontal ? col + i : col;
-      
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue;
           const checkR = r + dr;
           const checkC = c + dc;
           if (checkR >= 0 && checkR < GRID_SIZE && checkC >= 0 && checkC < GRID_SIZE) {
-            if (grid[checkR][checkC] !== null) {
-              return false;
-            }
+            if (grid[checkR][checkC] !== null) return false;
           }
         }
       }
@@ -656,8 +613,9 @@ function BattleshipESL() {
   const placeShip = (row, col) => {
     if (currentShipIndex >= SHIPS.length) return;
     const ship = SHIPS[currentShipIndex];
-    const currentGrid = gameMode === 'online-host' ? player1.grid : player2.grid;
-    const grid = [...currentGrid.map(r => [...r])];
+    const isHost = gameMode === 'online-host';
+    const currentGrid = isHost ? player1.grid : player2.grid;
+    const grid = currentGrid.map(r => [...r]);
     
     if (!canPlaceShip(grid, row, col, ship.size, isHorizontal)) return;
     
@@ -673,7 +631,7 @@ function BattleshipESL() {
     const newPlacedShips = [...placedShips, newShip];
     setPlacedShips(newPlacedShips);
     
-    if (gameMode === 'online-host') {
+    if (isHost) {
       setPlayer1(prev => ({ ...prev, grid, ships: newPlacedShips }));
     } else {
       setPlayer2(prev => ({ ...prev, grid, ships: newPlacedShips }));
@@ -688,26 +646,22 @@ function BattleshipESL() {
 
   const completeSetup = (grid, ships) => {
     const gifts = spawnInitialGifts(grid, 2);
+    const isHost = gameMode === 'online-host';
     
-    if (gameMode === 'online-host') {
+    if (isHost) {
       setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
       setPlayer1SetupComplete(true);
-      sendMessage({ type: 'setup-complete', grid, ships, gifts });
-      if (opponentSetupReceived) {
-        setGamePhase('battle');
-      } else {
-        setWaitingForOpponent(true);
-      }
     } else {
       setPlayer2(prev => ({ ...prev, grid, ships, gifts }));
       setPlayer2SetupComplete(true);
-      sendMessage({ type: 'setup-complete', grid, ships, gifts });
-      setIsMyTurn(false);
-      if (opponentSetupReceived) {
-        setGamePhase('battle');
-      } else {
-        setWaitingForOpponent(true);
-      }
+    }
+    
+    sendMessage({ type: 'setup-complete', grid, ships, gifts });
+    
+    if (opponentSetupReceived) {
+      setGamePhase('battle');
+    } else {
+      setWaitingForOpponent(true);
     }
   };
 
@@ -732,9 +686,9 @@ function BattleshipESL() {
   const checkAndSpawnAirdrop = useCallback(() => {
     if (totalAirdrops >= AIRDROP_CONFIG.maxAirdropsPerGame) return;
     
-    const currentGameMode = gameModeRef.current;
-    const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
-    const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
+    const isHost = gameModeRef.current === 'online-host';
+    const myPlayer = isHost ? player1Ref.current : player2Ref.current;
+    const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
     
     let currentChance = AIRDROP_CONFIG.baseChance;
     if (airdropsSinceLastSpawn >= AIRDROP_CONFIG.droughtThreshold) {
@@ -744,8 +698,7 @@ function BattleshipESL() {
       );
     }
     
-    const roll = Math.random();
-    if (roll < currentChance) {
+    if (Math.random() < currentChance) {
       const grid = myPlayer.grid;
       const received = myPlayer.received;
       const existingGifts = myPlayer.gifts || [];
@@ -775,23 +728,17 @@ function BattleshipESL() {
         
         const newGift = { row: r, col: c, weapon: weaponType };
         
-        setMyPlayer(prev => ({
-          ...prev,
-          gifts: [...(prev.gifts || []), newGift]
-        }));
-        
+        setMyPlayer(prev => ({ ...prev, gifts: [...(prev.gifts || []), newGift] }));
         sendMessage({ type: 'airdrop-spawned', gift: newGift });
         
         setTotalAirdrops(prev => prev + 1);
         setAirdropsSinceLastSpawn(0);
-        setNewAirdropMessage(`🎁 Airdrop appeared! (${WEAPONS[weaponType].icon} ${WEAPONS[weaponType].name})`);
+        setNewAirdropMessage(`🎁 Airdrop! (${WEAPONS[weaponType].icon} ${WEAPONS[weaponType].name})`);
         setTimeout(() => setNewAirdropMessage(null), 3000);
       }
     } else {
       setAirdropsSinceLastSpawn(prev => prev + 1);
     }
-    
-    setAirdropCheckCount(prev => prev + 1);
   }, [totalAirdrops, airdropsSinceLastSpawn, sendMessage]);
 
   const randomPlaceShips = () => {
@@ -801,6 +748,7 @@ function BattleshipESL() {
     for (let i = 0; i < SHIPS.length; i++) {
       const ship = SHIPS[i];
       let placed = false, attempts = 0;
+      
       while (!placed && attempts < 200) {
         const horizontal = Math.random() > 0.5;
         const row = Math.floor(Math.random() * GRID_SIZE);
@@ -821,6 +769,7 @@ function BattleshipESL() {
         attempts++;
       }
       
+      // Fallback without separation requirement
       if (!placed) {
         attempts = 0;
         while (!placed && attempts < 100) {
@@ -843,7 +792,8 @@ function BattleshipESL() {
       }
     }
     
-    if (gameMode === 'online-host') {
+    const isHost = gameMode === 'online-host';
+    if (isHost) {
       setPlayer1(prev => ({ ...prev, grid, ships }));
     } else {
       setPlayer2(prev => ({ ...prev, grid, ships }));
@@ -855,12 +805,13 @@ function BattleshipESL() {
   const fireWeapon = (row, col) => {
     if (!isMyTurn) return;
     
-    const attacker = gameMode === 'online-host' ? player1 : player2;
+    const isHost = gameMode === 'online-host';
+    const attacker = isHost ? player1 : player2;
     const weapon = WEAPONS[selectedWeapon];
     
     if (selectedWeapon !== 'simple' && attacker.weapons[selectedWeapon] <= 0) return;
     
-    const attackerTracking = gameMode === 'online-host' ? player1.tracking : player2.tracking;
+    const attackerTracking = isHost ? player1.tracking : player2.tracking;
     if (attackerTracking[row][col] !== null) return;
     
     const pattern = selectedWeapon === 'rain' ? generateRainPattern() : weapon.pattern;
@@ -868,21 +819,11 @@ function BattleshipESL() {
       ([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE
     );
     
-    setFiringAnimation({
-      weapon: selectedWeapon,
-      origin: [row, col],
-      targets: targetCells,
-      phase: 'launch'
-    });
+    setFiringAnimation({ weapon: selectedWeapon, targets: targetCells, phase: 'launch' });
     setShowFiringAnimation(true);
     
-    setTimeout(() => {
-      setFiringAnimation(prev => ({ ...prev, phase: 'travel' }));
-    }, 300);
-    
-    setTimeout(() => {
-      setFiringAnimation(prev => ({ ...prev, phase: 'impact' }));
-    }, 800);
+    setTimeout(() => setFiringAnimation(prev => ({ ...prev, phase: 'travel' })), 300);
+    setTimeout(() => setFiringAnimation(prev => ({ ...prev, phase: 'impact' })), 800);
     
     setTimeout(() => {
       setShowFiringAnimation(false);
@@ -901,8 +842,8 @@ function BattleshipESL() {
       setWaitingForOpponent(true);
       
       if (selectedWeapon !== 'simple') {
-        const updatePlayer = gameMode === 'online-host' ? setPlayer1 : setPlayer2;
-        updatePlayer(prev => ({
+        const setMyPlayer = isHost ? setPlayer1 : setPlayer2;
+        setMyPlayer(prev => ({
           ...prev,
           weapons: { ...prev.weapons, [selectedWeapon]: prev.weapons[selectedWeapon] - 1 }
         }));
@@ -925,10 +866,8 @@ function BattleshipESL() {
         
         if (extraTurn) {
           setIsMyTurn(true);
-          setGamePhase('battle');
         } else {
           setIsMyTurn(false);
-          setGamePhase('battle');
         }
         
         setCurrentQuestion(null);
@@ -938,6 +877,7 @@ function BattleshipESL() {
         setExtraTurn(false);
         setSunkShip(null);
         setIsWatchingQuestion(false);
+        setGamePhase('battle');
       } else {
         sendMessage({ type: 'question-retry' });
         const newQuestion = getRandomQuestion(difficulty);
@@ -949,7 +889,7 @@ function BattleshipESL() {
     }, 1500);
   };
 
-  // Render Functions
+  // Render cell
   const renderCell = (row, col, isOwnGrid, playerData, isSetup = false, trackingData = null) => {
     const cell = playerData.grid[row][col];
     const hitData = isOwnGrid ? playerData.received : trackingData;
@@ -1046,9 +986,9 @@ function BattleshipESL() {
 
   const getDifficultyHint = () => {
     switch(difficulty) {
-      case 'easy': return 'Basic grammar: be verbs, simple present, articles';
-      case 'medium': return 'Intermediate: perfect tenses, conditionals, passive';
-      case 'hard': return 'Advanced: inversion, subjunctive, complex structures';
+      case 'easy': return 'Basic: be verbs, simple present, articles';
+      case 'medium': return 'Intermediate: perfect tenses, conditionals';
+      case 'hard': return 'Advanced: inversion, subjunctive';
       default: return '';
     }
   };
@@ -1061,33 +1001,21 @@ function BattleshipESL() {
       color: white;
       font-family: 'Segoe UI', system-ui, sans-serif;
       padding: 20px;
-      overflow-x: hidden;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-      width: 100%;
-    }
+    .header { text-align: center; margin-bottom: 20px; width: 100%; }
     .title {
       font-size: 2.5rem;
       font-weight: 800;
-      text-transform: uppercase;
       background: linear-gradient(90deg, #00d9ff, #00ff88);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
       letter-spacing: 3px;
     }
-    .subtitle {
-      color: #8892b0;
-      font-size: 1rem;
-      margin-top: 5px;
-    }
+    .subtitle { color: #8892b0; font-size: 1rem; margin-top: 5px; }
     
-    /* Menu Styles */
     .menu-container {
       display: flex;
       justify-content: center;
@@ -1103,32 +1031,44 @@ function BattleshipESL() {
       padding: 40px;
       width: 100%;
       max-width: 450px;
-      backdrop-filter: blur(10px);
     }
-    .menu-title {
-      text-align: center;
-      font-size: 1.5rem;
-      margin-bottom: 30px;
-      color: #00d9ff;
+    .menu-title { text-align: center; font-size: 1.5rem; margin-bottom: 30px; color: #00d9ff; }
+    
+    .menu-btn {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #334155, #1e293b);
+      color: white;
     }
-    .difficulty-selector {
-      margin-bottom: 30px;
+    .menu-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3); }
+    .menu-btn.primary {
+      background: linear-gradient(135deg, #00d9ff, #00ff88);
+      color: #1a1a2e;
+      font-weight: bold;
     }
-    .difficulty-selector.disabled {
-      opacity: 0.6;
-      pointer-events: none;
+    .menu-btn.back {
+      background: transparent;
+      border: 2px solid #334155;
+      margin-top: 20px;
     }
-    .difficulty-label {
-      display: block;
-      text-align: center;
-      margin-bottom: 10px;
-      color: #8892b0;
+    
+    .connection-panel {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
     }
-    .difficulty-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-    }
+    .panel-title { font-size: 1.2rem; color: #00d9ff; margin-bottom: 15px; text-align: center; }
+    
+    .difficulty-selector { margin-bottom: 20px; }
+    .difficulty-label { display: block; text-align: center; margin-bottom: 10px; color: #8892b0; }
+    .difficulty-buttons { display: flex; gap: 10px; justify-content: center; }
     .diff-btn {
       padding: 10px 20px;
       border: 2px solid #334155;
@@ -1142,95 +1082,27 @@ function BattleshipESL() {
       border-color: #00d9ff;
       background: rgba(0, 217, 255, 0.1);
     }
-    .diff-btn.active {
-      box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
-    }
-    .difficulty-hint {
-      text-align: center;
-      font-size: 0.85rem;
-      color: #6b7280;
-      margin-top: 10px;
-      font-style: italic;
-    }
-    .joiner-difficulty-notice {
-      text-align: center;
-      font-size: 0.8rem;
-      color: #fbbf24;
-      margin-top: 8px;
-    }
-    .menu-btn {
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      transition: all 0.3s;
-      background: linear-gradient(135deg, #334155, #1e293b);
-      color: white;
-    }
-    .menu-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-    }
-    .menu-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .menu-btn.primary {
-      background: linear-gradient(135deg, #00d9ff, #00ff88);
-      color: #1a1a2e;
-      font-weight: bold;
-    }
-    .connection-panel {
-      margin-top: 20px;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 10px;
-    }
-    .connection-error {
-      background: rgba(239, 68, 68, 0.2);
-      border: 1px solid #ef4444;
-      color: #fca5a5;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      font-size: 0.9rem;
-      text-align: center;
-    }
+    .diff-btn.active { box-shadow: 0 0 15px rgba(0, 217, 255, 0.3); }
+    .difficulty-hint { text-align: center; font-size: 0.8rem; color: #6b7280; margin-top: 10px; font-style: italic; }
+    
     .peer-id-display {
       background: rgba(0, 0, 0, 0.4);
       padding: 15px;
       border-radius: 8px;
       font-family: monospace;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       word-break: break-all;
       margin: 10px 0;
       text-align: center;
       cursor: pointer;
       border: 2px solid transparent;
       transition: all 0.3s;
-      position: relative;
     }
-    .peer-id-display:hover {
-      border-color: #00d9ff;
-      background: rgba(0, 217, 255, 0.1);
-    }
-    .peer-id-display.copied {
-      border-color: #00ff88;
-      background: rgba(0, 255, 136, 0.1);
-    }
-    .copy-hint {
-      font-size: 0.75rem;
-      color: #8892b0;
-      margin-top: 5px;
-      text-align: center;
-    }
-    .copy-success {
-      color: #00ff88;
-      font-weight: bold;
-    }
+    .peer-id-display:hover { border-color: #00d9ff; }
+    .peer-id-display.copied { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+    .copy-hint { font-size: 0.75rem; color: #8892b0; margin-top: 5px; text-align: center; }
+    .copy-success { color: #00ff88; font-weight: bold; }
+    
     .peer-input {
       width: 100%;
       padding: 15px;
@@ -1241,40 +1113,29 @@ function BattleshipESL() {
       font-size: 1rem;
       margin: 10px 0;
     }
-    .peer-input:focus {
-      outline: none;
-      border-color: #00d9ff;
-    }
-    .paste-input-wrapper {
-      display: flex;
-      gap: 10px;
-      align-items: stretch;
-    }
-    .paste-input-wrapper .peer-input {
-      flex: 1;
-      margin: 0;
-    }
+    .peer-input:focus { outline: none; border-color: #00d9ff; }
+    
+    .paste-input-wrapper { display: flex; gap: 10px; }
+    .paste-input-wrapper .peer-input { flex: 1; margin: 0; }
     .paste-btn {
       padding: 10px 15px;
       border: 2px solid #00d9ff;
       border-radius: 8px;
       background: rgba(0, 217, 255, 0.2);
       color: #00d9ff;
-      font-size: 0.9rem;
       cursor: pointer;
-      transition: all 0.3s;
-      white-space: nowrap;
     }
-    .paste-btn:hover {
-      background: #00d9ff;
-      color: #0f172a;
-    }
+    .paste-btn:hover { background: #00d9ff; color: #0f172a; }
+    
     .status-indicator {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
       margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
     }
     .status-dot {
       width: 10px;
@@ -1283,65 +1144,24 @@ function BattleshipESL() {
       background: #ef4444;
       animation: dotPulse 1.5s ease-in-out infinite;
     }
-    .status-dot.connected {
-      background: #22c55e;
-      box-shadow: 0 0 10px #22c55e;
-      animation: none;
-    }
-    @keyframes dotPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    .status-dot.connected { background: #22c55e; animation: none; box-shadow: 0 0 10px #22c55e; }
+    @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     
-    /* Setup Styles */
     .setup-container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       width: 100%;
       max-width: 600px;
     }
-    .setup-header {
-      text-align: center;
-      margin-bottom: 20px;
-      width: 100%;
-    }
-    .player-indicator {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #00d9ff;
-      margin-bottom: 15px;
-    }
-    .ship-to-place {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
-      margin-bottom: 15px;
-    }
-    .ship-preview {
-      display: flex;
-      gap: 2px;
-    }
-    .ship-preview-cell {
-      width: 25px;
-      height: 25px;
-      border-radius: 3px;
-    }
-    .ship-name {
-      font-weight: bold;
-      color: white;
-    }
-    .ship-size {
-      font-size: 0.8rem;
-      color: #8892b0;
-    }
-    .setup-controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-    }
+    .setup-header { text-align: center; margin-bottom: 20px; width: 100%; }
+    .player-indicator { font-size: 1.5rem; font-weight: bold; color: #00d9ff; margin-bottom: 15px; }
+    .ship-to-place { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+    .ship-preview { display: flex; gap: 2px; }
+    .ship-preview-cell { width: 25px; height: 25px; border-radius: 3px; }
+    .ship-name { font-weight: bold; color: white; }
+    .ship-size { font-size: 0.8rem; color: #8892b0; }
+    .setup-controls { display: flex; gap: 10px; justify-content: center; }
     .control-btn {
       padding: 8px 16px;
       border: 2px solid #334155;
@@ -1349,334 +1169,104 @@ function BattleshipESL() {
       color: white;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s;
     }
-    .control-btn:hover, .control-btn.active {
-      border-color: #00d9ff;
-      background: rgba(0, 217, 255, 0.1);
-    }
+    .control-btn:hover, .control-btn.active { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
     
-    /* Grid Styles */
-    .grid-wrapper {
-      display: inline-block;
-    }
-    .grid-labels-top {
-      display: flex;
-    }
-    .corner {
-      width: 30px;
-      height: 30px;
-    }
-    .label {
-      width: 35px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: #8892b0;
-      font-size: 0.8rem;
-    }
-    .grid-body {
-      display: flex;
-    }
-    .grid-labels-side {
-      display: flex;
-      flex-direction: column;
-    }
-    .grid-labels-side .label {
-      width: 30px;
-      height: 35px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(10, 35px);
-      gap: 2px;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 5px;
-      border-radius: 10px;
-    }
+    .grid-wrapper { display: inline-block; }
+    .grid-labels-top { display: flex; }
+    .corner { width: 30px; height: 30px; }
+    .label { width: 35px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #8892b0; font-size: 0.8rem; }
+    .grid-body { display: flex; }
+    .grid-labels-side { display: flex; flex-direction: column; }
+    .grid-labels-side .label { width: 30px; height: 35px; }
+    .grid { display: grid; grid-template-columns: repeat(10, 35px); gap: 2px; background: rgba(0, 0, 0, 0.3); padding: 5px; border-radius: 10px; }
     .cell {
-      width: 35px;
-      height: 35px;
+      width: 35px; height: 35px;
       background: rgba(0, 100, 150, 0.3);
       border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       transition: all 0.2s;
       font-size: 1.2rem;
       position: relative;
     }
-    .cell:hover {
-      background: rgba(0, 200, 255, 0.3);
-    }
-    .cell.ship {
-      cursor: default;
-    }
-    .cell.enemy:hover {
-      background: rgba(255, 100, 100, 0.4);
-    }
-    .cell.hit {
-      background: rgba(255, 100, 100, 0.6);
-    }
-    .cell.miss {
-      background: rgba(100, 100, 100, 0.4);
-    }
-    .cell.gift-cell {
-      background: rgba(255, 200, 0, 0.3);
-      border: 2px solid #fbbf24;
-      animation: giftPulse 2s ease-in-out infinite;
-    }
-    .cell.gift-cell:hover {
-      background: rgba(255, 200, 0, 0.5);
-      transform: scale(1.1);
-    }
-    @keyframes giftPulse {
-      0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.5); }
-      50% { box-shadow: 0 0 15px rgba(255, 200, 0, 0.8); }
-    }
-    .hit-marker {
-      font-size: 1rem;
-    }
-    .gift {
-      font-size: 0.9rem;
-    }
+    .cell:hover { background: rgba(0, 200, 255, 0.3); }
+    .cell.ship { cursor: default; }
+    .cell.enemy:hover { background: rgba(255, 100, 100, 0.4); }
+    .cell.hit { background: rgba(255, 100, 100, 0.6); }
+    .cell.miss { background: rgba(100, 100, 100, 0.4); }
+    .cell.gift-cell { background: rgba(255, 200, 0, 0.3); border: 2px solid #fbbf24; animation: giftPulse 2s ease-in-out infinite; }
+    @keyframes giftPulse { 0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.5); } 50% { box-shadow: 0 0 15px rgba(255, 200, 0, 0.8); } }
+    .hit-marker { font-size: 1rem; }
+    .gift { font-size: 0.9rem; }
     
-    /* Firing Animation */
-    .cell.firing-target {
-      position: relative;
-      overflow: visible;
-    }
-    .cell.firing-target.firing-launch {
-      background: rgba(255, 200, 0, 0.3);
-      animation: targetLock 0.3s ease-out;
-    }
-    .cell.firing-target.firing-travel {
-      background: rgba(255, 150, 0, 0.5);
-      animation: missileIncoming 0.5s ease-in;
-    }
-    .cell.firing-target.firing-impact {
-      background: rgba(255, 100, 0, 0.7);
-      animation: explosion 0.5s ease-out;
-    }
-    @keyframes targetLock {
-      0% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.8); }
-      100% { box-shadow: 0 0 20px 5px rgba(255, 200, 0, 0.4); }
-    }
-    @keyframes missileIncoming {
-      0% { transform: scale(0.8); opacity: 0.5; }
-      50% { transform: scale(1.2); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes explosion {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.3); box-shadow: 0 0 30px 10px rgba(255, 100, 0, 0.8); }
-      100% { transform: scale(1); }
-    }
-    .impact-anim {
-      position: absolute;
-      font-size: 1.5rem;
-      animation: impactBurst 0.5s ease-out forwards;
-      z-index: 10;
-    }
-    @keyframes impactBurst {
-      0% { transform: scale(0); opacity: 1; }
-      50% { transform: scale(1.5); opacity: 1; }
-      100% { transform: scale(2); opacity: 0; }
-    }
+    .cell.firing-target.firing-launch { background: rgba(255, 200, 0, 0.3); animation: targetLock 0.3s ease-out; }
+    .cell.firing-target.firing-travel { background: rgba(255, 150, 0, 0.5); animation: missileIncoming 0.5s ease-in; }
+    .cell.firing-target.firing-impact { background: rgba(255, 100, 0, 0.7); animation: explosion 0.5s ease-out; }
+    @keyframes targetLock { 0% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.8); } 100% { box-shadow: 0 0 20px 5px rgba(255, 200, 0, 0.4); } }
+    @keyframes missileIncoming { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    @keyframes explosion { 0% { transform: scale(1); } 50% { transform: scale(1.3); box-shadow: 0 0 30px 10px rgba(255, 100, 0, 0.8); } 100% { transform: scale(1); } }
+    .impact-anim { position: absolute; font-size: 1.5rem; animation: impactBurst 0.5s ease-out forwards; z-index: 10; }
+    @keyframes impactBurst { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1.5); } 100% { transform: scale(2); opacity: 0; } }
     
-    /* Incoming shot animation */
-    .cell.incoming-shot {
-      animation: incoming-pulse 0.5s ease-in-out infinite;
-    }
-    @keyframes incoming-pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
-    .explosion-anim {
-      position: absolute;
-      font-size: 1.5rem;
-      animation: explode 0.5s ease-out forwards;
-    }
-    @keyframes explode {
-      0% { transform: scale(0); opacity: 1; }
-      100% { transform: scale(2); opacity: 0; }
-    }
-    .splash-anim {
-      animation: splash 0.3s ease-out;
-    }
-    @keyframes splash {
-      0% { transform: scale(0); }
-      100% { transform: scale(1); }
-    }
+    .cell.incoming-shot { animation: incoming-pulse 0.5s ease-in-out infinite; }
+    @keyframes incoming-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .explosion-anim { position: absolute; font-size: 1.5rem; animation: explode 0.5s ease-out forwards; }
+    @keyframes explode { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+    .splash-anim { animation: splash 0.3s ease-out; }
+    @keyframes splash { 0% { transform: scale(0); } 100% { transform: scale(1); } }
     
-    /* Battle Styles */
-    .battle-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 1200px;
-      padding: 0 10px;
-      box-sizing: border-box;
-    }
-    .battle-header {
-      text-align: center;
-      margin-bottom: 15px;
-      width: 100%;
-    }
+    .battle-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; }
+    .battle-header { text-align: center; margin-bottom: 15px; width: 100%; }
     .turn-indicator {
-      font-size: 1.3rem;
-      font-weight: bold;
-      color: #00ff88;
+      font-size: 1.3rem; font-weight: bold; color: #00ff88;
       padding: 10px 20px;
       background: rgba(0, 255, 136, 0.15);
       border: 2px solid #00ff88;
       border-radius: 10px;
       display: inline-block;
-      transition: all 0.3s;
     }
-    .turn-indicator.waiting {
-      color: #fbbf24;
-      background: rgba(251, 191, 36, 0.15);
-      border-color: #fbbf24;
-      animation: waitingPulse 2s ease-in-out infinite;
-    }
-    @keyframes waitingPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.7; transform: scale(0.98); }
-    }
-    .grids-container {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 30px;
-      flex-wrap: wrap;
-    }
-    .grid-section {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .grid-title {
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-      color: #00d9ff;
-      font-weight: bold;
-    }
-    .ships-status {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      justify-content: center;
-      margin-top: 10px;
-      max-width: 100%;
-    }
-    .ship-status {
-      padding: 4px 8px;
-      background: rgba(0, 150, 100, 0.3);
-      border-radius: 4px;
-      font-size: 0.7rem;
-    }
-    .ship-status.sunk {
-      background: rgba(200, 50, 50, 0.5);
-      text-decoration: line-through;
-    }
-    .weapons-panel {
-      margin-top: 20px;
-      text-align: center;
-      width: 100%;
-    }
-    .weapons-title {
-      font-size: 1.1rem;
-      margin-bottom: 10px;
-      color: #00d9ff;
-    }
-    .weapons-grid {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      max-width: 500px;
-      margin: 0 auto;
-    }
+    .turn-indicator.waiting { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border-color: #fbbf24; animation: waitingPulse 2s ease-in-out infinite; }
+    @keyframes waitingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .grids-container { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+    .grid-section { text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .grid-title { font-size: 1.1rem; margin-bottom: 8px; color: #00d9ff; font-weight: bold; }
+    .ships-status { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 10px; }
+    .ship-status { padding: 4px 8px; background: rgba(0, 150, 100, 0.3); border-radius: 4px; font-size: 0.7rem; }
+    .ship-status.sunk { background: rgba(200, 50, 50, 0.5); text-decoration: line-through; }
+    .weapons-panel { margin-top: 20px; text-align: center; width: 100%; }
+    .weapons-title { font-size: 1.1rem; margin-bottom: 10px; color: #00d9ff; }
+    .weapons-grid { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; max-width: 500px; margin: 0 auto; }
     .weapon-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      display: flex; flex-direction: column; align-items: center;
       padding: 8px 12px;
       border: 2px solid #334155;
       background: rgba(0, 0, 0, 0.3);
       color: white;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s;
       min-width: 70px;
     }
-    .weapon-btn:hover:not(:disabled) {
-      border-color: #00d9ff;
-      background: rgba(0, 217, 255, 0.1);
-    }
-    .weapon-btn.selected {
-      border-color: #00ff88;
-      background: rgba(0, 255, 136, 0.2);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-    }
-    .weapon-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .weapon-icon {
-      font-size: 1.3rem;
-      margin-bottom: 5px;
-    }
-    .weapon-name {
-      font-size: 0.75rem;
-      margin-bottom: 3px;
-    }
-    .weapon-count {
-      font-size: 0.8rem;
-      color: #00d9ff;
-      font-weight: bold;
-    }
+    .weapon-btn:hover:not(:disabled) { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
+    .weapon-btn.selected { border-color: #00ff88; background: rgba(0, 255, 136, 0.2); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+    .weapon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .weapon-icon { font-size: 1.3rem; margin-bottom: 5px; }
+    .weapon-name { font-size: 0.75rem; margin-bottom: 3px; }
+    .weapon-count { font-size: 0.8rem; color: #00d9ff; font-weight: bold; }
     
-    /* Airdrop notification */
     .airdrop-notification {
-      position: fixed;
-      top: 80px;
-      left: 50%;
-      transform: translateX(-50%);
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
       background: linear-gradient(135deg, #fbbf24, #f59e0b);
-      color: #1a1a2e;
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-weight: bold;
-      font-size: 1rem;
-      z-index: 100;
+      color: #1a1a2e; padding: 12px 24px; border-radius: 10px;
+      font-weight: bold; z-index: 100;
       animation: airdropSlide 3s ease-in-out forwards;
-      box-shadow: 0 5px 20px rgba(251, 191, 36, 0.4);
     }
-    @keyframes airdropSlide {
-      0% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-      10% { transform: translateX(-50%) translateY(0); opacity: 1; }
-      80% { transform: translateX(-50%) translateY(0); opacity: 1; }
-      100% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-    }
+    @keyframes airdropSlide { 0% { transform: translateX(-50%) translateY(-100%); opacity: 0; } 10% { transform: translateX(-50%) translateY(0); opacity: 1; } 80% { transform: translateX(-50%) translateY(0); opacity: 1; } 100% { transform: translateX(-50%) translateY(-100%); opacity: 0; } }
     
-    /* Question Overlay */
     .question-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.85);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       z-index: 100;
     }
     .question-modal {
@@ -1688,60 +1278,23 @@ function BattleshipESL() {
       width: 90%;
       text-align: center;
     }
-    .shot-result {
-      margin-bottom: 20px;
-      padding: 15px;
-      border-radius: 10px;
-      background: rgba(100, 100, 100, 0.3);
-    }
-    .shot-result.hit {
-      background: rgba(255, 100, 100, 0.3);
-      border: 1px solid #e74c3c;
-    }
-    .shot-result-text {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .sunk-announcement {
-      color: #f39c12;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .extra-turn-notice {
-      color: #00ff88;
-      font-weight: bold;
-      margin-top: 10px;
-    }
+    .shot-result { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: rgba(100, 100, 100, 0.3); }
+    .shot-result.hit { background: rgba(255, 100, 100, 0.3); border: 1px solid #e74c3c; }
+    .shot-result-text { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+    .sunk-announcement { color: #f39c12; font-weight: bold; margin-top: 10px; }
+    .extra-turn-notice { color: #00ff88; font-weight: bold; margin-top: 10px; }
     .watching-indicator {
       background: rgba(0, 217, 255, 0.2);
       border: 2px solid #00d9ff;
       border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 20px;
-      font-size: 1.2rem;
-      color: #00d9ff;
+      padding: 15px; margin-bottom: 20px;
+      font-size: 1.2rem; color: #00d9ff;
       animation: pulse 1.5s ease-in-out infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-    .question-header {
-      font-size: 1.2rem;
-      color: #00d9ff;
-      margin-bottom: 15px;
-    }
-    .question-text {
-      font-size: 1.3rem;
-      margin-bottom: 20px;
-      line-height: 1.4;
-    }
-    .options-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .question-header { font-size: 1.2rem; color: #00d9ff; margin-bottom: 15px; }
+    .question-text { font-size: 1.3rem; margin-bottom: 20px; line-height: 1.4; }
+    .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .option-btn {
       padding: 15px;
       border: 2px solid #334155;
@@ -1750,215 +1303,81 @@ function BattleshipESL() {
       border-radius: 10px;
       font-size: 1rem;
       cursor: pointer;
-      transition: all 0.3s;
     }
-    .option-btn:hover:not(:disabled) {
-      border-color: #00d9ff;
-      background: rgba(0, 217, 255, 0.1);
-    }
-    .option-btn.selected {
-      border-color: #f39c12;
-      background: rgba(243, 156, 18, 0.2);
-    }
-    .option-btn.correct {
-      border-color: #22c55e;
-      background: rgba(34, 197, 94, 0.3);
-    }
-    .option-btn.incorrect {
-      border-color: #ef4444;
-      background: rgba(239, 68, 68, 0.3);
-    }
-    .option-btn:disabled {
-      cursor: default;
-    }
-    .answer-feedback {
-      margin-top: 15px;
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-    .answer-feedback.correct {
-      color: #22c55e;
-    }
-    .answer-feedback.incorrect {
-      color: #ef4444;
-    }
+    .option-btn:hover:not(:disabled) { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
+    .option-btn.selected { border-color: #f39c12; background: rgba(243, 156, 18, 0.2); }
+    .option-btn.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.3); }
+    .option-btn.incorrect { border-color: #ef4444; background: rgba(239, 68, 68, 0.3); }
+    .option-btn:disabled { cursor: default; }
+    .answer-feedback { margin-top: 15px; font-size: 1.2rem; font-weight: bold; }
+    .answer-feedback.correct { color: #22c55e; }
+    .answer-feedback.incorrect { color: #ef4444; }
     
-    /* Game Over */
     .gameover-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       z-index: 100;
     }
-    .gameover-content {
-      text-align: center;
-    }
-    .gameover-title {
-      font-size: 3rem;
-      margin-bottom: 20px;
-    }
-    .winner-text {
-      font-size: 2rem;
-      color: #00d9ff;
-      margin-bottom: 30px;
-    }
+    .gameover-content { text-align: center; }
+    .gameover-title { font-size: 3rem; margin-bottom: 20px; }
+    .winner-text { font-size: 2rem; color: #00d9ff; margin-bottom: 30px; }
     .gameover-btn {
-      padding: 15px 40px;
-      font-size: 1.2rem;
-      border: none;
-      border-radius: 10px;
+      padding: 15px 40px; font-size: 1.2rem;
+      border: none; border-radius: 10px;
       background: linear-gradient(135deg, #00d9ff, #00ff88);
-      color: #1a1a2e;
-      font-weight: bold;
-      cursor: pointer;
+      color: #1a1a2e; font-weight: bold; cursor: pointer;
     }
     
-    /* Waiting Overlay */
     .waiting-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       z-index: 50;
     }
-    .waiting-content {
-      text-align: center;
-      color: white;
-    }
+    .waiting-content { text-align: center; color: white; }
     .waiting-spinner {
-      width: 50px;
-      height: 50px;
+      width: 50px; height: 50px;
       border: 4px solid rgba(255, 255, 255, 0.2);
       border-top-color: #00d9ff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     
-    /* Incoming Attack Overlay */
     .incoming-attack-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       z-index: 50;
     }
-    .incoming-attack-title {
-      font-size: 2rem;
-      color: #ef4444;
-      margin-bottom: 30px;
-      animation: pulse-text 0.5s ease-in-out infinite alternate;
-    }
-    @keyframes pulse-text {
-      from { transform: scale(1); opacity: 0.8; }
-      to { transform: scale(1.1); opacity: 1; }
-    }
-    .incoming-attack-result {
-      font-size: 1.5rem;
-      margin-top: 20px;
-    }
-    .incoming-attack-result.hit {
-      color: #ef4444;
-    }
-    .incoming-attack-result.miss {
-      color: #8892b0;
-    }
-    .incoming-sunk {
-      color: #f39c12;
-      font-size: 1.3rem;
-      margin-top: 10px;
-    }
-    
-    /* Responsive */
-    @media (max-width: 900px) {
-      .grids-container { gap: 20px; }
-      .grid { grid-template-columns: repeat(10, 32px); }
-      .cell { width: 32px; height: 32px; }
-      .corner { width: 26px; height: 26px; }
-      .label { width: 32px; height: 26px; font-size: 0.75rem; }
-      .grid-labels-side .label { width: 26px; height: 32px; }
-    }
+    .incoming-attack-title { font-size: 2rem; color: #ef4444; margin-bottom: 30px; animation: pulse-text 0.5s ease-in-out infinite alternate; }
+    @keyframes pulse-text { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
+    .incoming-attack-result { font-size: 1.5rem; margin-top: 20px; }
+    .incoming-attack-result.hit { color: #ef4444; }
+    .incoming-attack-result.miss { color: #8892b0; }
+    .incoming-sunk { color: #f39c12; font-size: 1.3rem; margin-top: 10px; }
     
     @media (max-width: 768px) {
       .title { font-size: 1.4rem; }
-      .subtitle { font-size: 0.85rem; }
-      .header { padding: 10px 0; }
       .grids-container { flex-direction: column; align-items: center; gap: 15px; }
       .grid { grid-template-columns: repeat(10, 30px); }
       .cell { width: 30px; height: 30px; font-size: 0.85rem; }
       .corner { width: 24px; height: 24px; }
       .label { width: 30px; height: 24px; font-size: 0.7rem; }
       .grid-labels-side .label { width: 24px; height: 30px; }
-      .turn-indicator { font-size: 1.1rem; padding: 8px 15px; }
-      .weapons-grid { gap: 6px; }
-      .weapon-btn { min-width: 60px; padding: 6px 10px; }
-      .weapon-icon { font-size: 1.1rem; }
-      .weapon-name { font-size: 0.65rem; }
-      .weapon-count { font-size: 0.6rem; }
     }
-    
-    @media (max-width: 600px) {
-      .title { font-size: 1.2rem; }
-      .grid { grid-template-columns: repeat(10, 28px); padding: 3px; gap: 1px; }
-      .cell { width: 28px; height: 28px; font-size: 0.8rem; border-radius: 3px; }
-      .corner { width: 22px; height: 22px; }
-      .label { width: 28px; height: 22px; font-size: 0.65rem; }
-      .grid-labels-side .label { width: 22px; height: 28px; }
-      .grid-title { font-size: 0.95rem; }
-      .ships-status { gap: 3px; }
-      .ship-status { padding: 3px 6px; font-size: 0.6rem; }
-    }
-    
     @media (max-width: 400px) {
-      .game-container { padding: 8px; }
-      .title { font-size: 1.1rem; }
-      .header { padding: 5px 0; }
-      .grid { grid-template-columns: repeat(10, 26px); padding: 2px; gap: 1px; }
-      .cell { width: 26px; height: 26px; font-size: 0.75rem; border-radius: 2px; }
+      .grid { grid-template-columns: repeat(10, 26px); }
+      .cell { width: 26px; height: 26px; font-size: 0.75rem; }
       .corner { width: 20px; height: 20px; }
       .label { width: 26px; height: 20px; font-size: 0.6rem; }
       .grid-labels-side .label { width: 20px; height: 26px; }
-      .turn-indicator { font-size: 0.95rem; padding: 6px 12px; }
-      .weapons-panel { margin-top: 15px; }
-      .weapons-title { font-size: 0.9rem; margin-bottom: 8px; }
-      .weapons-grid { gap: 4px; max-width: 100%; }
-      .weapon-btn { min-width: 55px; padding: 5px 8px; }
-      .weapon-icon { font-size: 1rem; }
-      .weapon-name { font-size: 0.55rem; }
-      .weapon-count { font-size: 0.55rem; }
-    }
-    
-    @media (max-width: 360px) {
-      .grid { grid-template-columns: repeat(10, 24px); }
-      .cell { width: 24px; height: 24px; font-size: 0.7rem; }
-      .corner { width: 18px; height: 18px; }
-      .label { width: 24px; height: 18px; font-size: 0.55rem; }
-      .grid-labels-side .label { width: 18px; height: 24px; }
     }
   `;
 
-  // Check if user is joiner (can't change difficulty)
-  const isJoiner = gameMode === 'online-joiner';
+  const isHost = gameMode === 'online-host';
 
   return (
     <div className="game-container">
@@ -1969,98 +1388,101 @@ function BattleshipESL() {
         <p className="subtitle">Naval Combat Grammar Challenge</p>
       </div>
 
-      {/* Airdrop Notification */}
-      {newAirdropMessage && (
-        <div className="airdrop-notification">{newAirdropMessage}</div>
-      )}
+      {newAirdropMessage && <div className="airdrop-notification">{newAirdropMessage}</div>}
 
       {/* MENU PHASE */}
       {gamePhase === 'menu' && (
         <div className="menu-container">
           <div className="menu-panel">
             <div className="menu-title">🎮 Online Multiplayer</div>
-            
-            {/* Difficulty selector - disabled for joiner */}
-            <div className={`difficulty-selector ${isJoiner ? 'disabled' : ''}`}>
-              <span className="difficulty-label">Grammar Difficulty</span>
-              <div className="difficulty-buttons">
-                <button className={`diff-btn ${difficulty === 'easy' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('easy')}>Easy</button>
-                <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('medium')}>Medium</button>
-                <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('hard')}>Hard</button>
-              </div>
-              <div className="difficulty-hint">{getDifficultyHint()}</div>
-              {isJoiner && <div className="joiner-difficulty-notice">⚠️ Host sets the difficulty</div>}
-            </div>
 
-            {/* Show buttons only before selecting a mode */}
+            {/* No mode selected - show buttons */}
             {!gameMode && (
               <>
-                <button className="menu-btn primary" onClick={() => { setGameMode('online-host'); initializePeer(true); }}>
-                  🌐 Host Online Game
-                </button>
-                
-                <button className="menu-btn" onClick={() => { setGameMode('online-joiner'); initializePeer(false); }}>
-                  🔗 Join Online Game
-                </button>
+                <button className="menu-btn primary" onClick={hostGame}>🌐 Host Online Game</button>
+                <button className="menu-btn" onClick={joinGame}>🔗 Join Online Game</button>
               </>
             )}
 
-            {/* Connection panel */}
-            {(gameMode === 'online-host' || gameMode === 'online-joiner') && (
+            {/* HOST MODE */}
+            {gameMode === 'online-host' && (
               <div className="connection-panel">
-                {connectionError && (
-                  <div className="connection-error">{connectionError}</div>
-                )}
+                <div className="panel-title">🌐 Hosting Game</div>
                 
-                {gameMode === 'online-host' && (
-                  <>
-                    <div>Share this code with your opponent:</div>
-                    <div 
-                      className={`peer-id-display ${copySuccess ? 'copied' : ''}`}
-                      onClick={() => peerId && copyToClipboard(peerId)}
-                    >
-                      {peerId || 'Generating...'}
-                    </div>
-                    <div className="copy-hint">
-                      {copySuccess ? <span className="copy-success">✓ Copied to clipboard!</span> : 'Click to copy'}
-                    </div>
-                  </>
-                )}
-                {gameMode === 'online-joiner' && (
-                  <>
-                    <div>Enter host's game code:</div>
-                    <div className="paste-input-wrapper">
-                      <input 
-                        className="peer-input" 
-                        type="text" 
-                        placeholder="Paste game code here" 
-                        value={remotePeerId} 
-                        onChange={(e) => setRemotePeerId(e.target.value)} 
-                      />
-                      <button 
-                        className="paste-btn" 
-                        onClick={async () => {
-                          try {
-                            const text = await navigator.clipboard.readText();
-                            setRemotePeerId(text.trim());
-                          } catch (err) {
-                            console.log('Paste failed:', err);
-                          }
-                        }}
-                        title="Click to paste from clipboard"
-                      >
-                        📋 Paste
-                      </button>
-                    </div>
-                    <button className="menu-btn primary" onClick={() => connectToPeer(remotePeerId)} disabled={!remotePeerId || !peer}>
-                      Connect
-                    </button>
-                  </>
-                )}
+                {/* Difficulty selector - HOST ONLY */}
+                <div className="difficulty-selector">
+                  <span className="difficulty-label">Grammar Difficulty</span>
+                  <div className="difficulty-buttons">
+                    <button className={`diff-btn ${difficulty === 'easy' ? 'active' : ''}`} onClick={() => setDifficulty('easy')}>Easy</button>
+                    <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => setDifficulty('medium')}>Medium</button>
+                    <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => setDifficulty('hard')}>Hard</button>
+                  </div>
+                  <div className="difficulty-hint">{getDifficultyHint()}</div>
+                </div>
+                
+                <div>Share this code with your opponent:</div>
+                <div 
+                  className={`peer-id-display ${copySuccess ? 'copied' : ''}`}
+                  onClick={() => peerId && copyToClipboard(peerId)}
+                >
+                  {peerId || 'Generating...'}
+                </div>
+                <div className="copy-hint">
+                  {copySuccess ? <span className="copy-success">✓ Copied!</span> : 'Click to copy'}
+                </div>
+                
                 <div className="status-indicator">
                   <div className={`status-dot ${isConnected ? 'connected' : ''}`}></div>
-                  <span>{isConnected ? 'Connected! Starting game...' : 'Waiting for connection...'}</span>
+                  <span>{connectionStatus}</span>
                 </div>
+                
+                <button className="menu-btn back" onClick={() => { setGameMode(null); peerRef.current?.destroy(); }}>← Back</button>
+              </div>
+            )}
+
+            {/* JOINER MODE */}
+            {gameMode === 'online-joiner' && (
+              <div className="connection-panel">
+                <div className="panel-title">🔗 Join Game</div>
+                
+                <div>Enter host's game code:</div>
+                <div className="paste-input-wrapper">
+                  <input 
+                    className="peer-input" 
+                    type="text" 
+                    placeholder="Paste game code here" 
+                    value={remotePeerId} 
+                    onChange={(e) => setRemotePeerId(e.target.value)} 
+                  />
+                  <button 
+                    className="paste-btn" 
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        setRemotePeerId(text.trim());
+                      } catch (err) {
+                        console.log('Paste failed');
+                      }
+                    }}
+                  >
+                    📋
+                  </button>
+                </div>
+                
+                <button 
+                  className="menu-btn primary" 
+                  onClick={connectToHost} 
+                  disabled={!remotePeerId.trim() || !peerId}
+                >
+                  Connect
+                </button>
+                
+                <div className="status-indicator">
+                  <div className={`status-dot ${isConnected ? 'connected' : ''}`}></div>
+                  <span>{connectionStatus || 'Enter code and click Connect'}</span>
+                </div>
+                
+                <button className="menu-btn back" onClick={() => { setGameMode(null); peerRef.current?.destroy(); }}>← Back</button>
               </div>
             )}
           </div>
@@ -2075,7 +1497,9 @@ function BattleshipESL() {
             {currentShipIndex < SHIPS.length && (
               <div className="ship-to-place">
                 <div className="ship-preview">
-                  {Array.from({ length: SHIPS[currentShipIndex].size }, (_, i) => <div key={i} className="ship-preview-cell" style={{ backgroundColor: SHIPS[currentShipIndex].color }} />)}
+                  {Array.from({ length: SHIPS[currentShipIndex].size }, (_, i) => (
+                    <div key={i} className="ship-preview-cell" style={{ backgroundColor: SHIPS[currentShipIndex].color }} />
+                  ))}
                 </div>
                 <div>
                   <div className="ship-name">{SHIPS[currentShipIndex].name}</div>
@@ -2089,16 +1513,15 @@ function BattleshipESL() {
               <button className="control-btn" onClick={randomPlaceShips}>Random</button>
             </div>
           </div>
-          {renderGrid(true, gameMode === 'online-host' ? player1 : player2, true)}
+          {renderGrid(true, isHost ? player1 : player2, true)}
         </div>
       )}
 
-      {/* Waiting overlay */}
       {waitingForOpponent && gamePhase === 'setup' && (
         <div className="waiting-overlay">
           <div className="waiting-content">
             <div className="waiting-spinner"></div>
-            <div>Waiting for opponent to finish setup...</div>
+            <div>Waiting for opponent...</div>
           </div>
         </div>
       )}
@@ -2108,25 +1531,20 @@ function BattleshipESL() {
         <div className="battle-container">
           <div className="battle-header">
             <div className={`turn-indicator ${!isMyTurn ? 'waiting' : ''}`}>
-              {isMyTurn ? '🎯 Your Turn - Select a Target!' : '⏳ Opponent\'s Turn - Watch the Boards'}
+              {isMyTurn ? '🎯 Your Turn!' : '⏳ Opponent\'s Turn'}
             </div>
           </div>
           <div className="grids-container">
             <div className="grid-section">
               <div className="grid-title">🎯 Enemy Waters</div>
-              {renderGrid(
-                false, 
-                gameMode === 'online-host' ? player2 : player1,
-                false,
-                gameMode === 'online-host' ? player1.tracking : player2.tracking
-              )}
+              {renderGrid(false, isHost ? player2 : player1, false, isHost ? player1.tracking : player2.tracking)}
             </div>
             <div className="grid-section">
               <div className="grid-title">⚓ Your Fleet</div>
-              {renderGrid(true, gameMode === 'online-host' ? player1 : player2)}
+              {renderGrid(true, isHost ? player1 : player2)}
               <div className="ships-status">
                 {SHIPS.map((ship, idx) => {
-                  const playerShips = gameMode === 'online-host' ? player1.ships : player2.ships;
+                  const playerShips = isHost ? player1.ships : player2.ships;
                   const isSunk = playerShips[idx]?.sunk;
                   return <div key={idx} className={`ship-status ${isSunk ? 'sunk' : ''}`}>{ship.name}</div>;
                 })}
@@ -2134,13 +1552,18 @@ function BattleshipESL() {
             </div>
           </div>
           <div className="weapons-panel">
-            <div className="weapons-title">⚔️ Arsenal ⚔️</div>
+            <div className="weapons-title">⚔️ Arsenal</div>
             <div className="weapons-grid">
               {Object.entries(WEAPONS).map(([key, weapon]) => {
-                const playerWeapons = gameMode === 'online-host' ? player1.weapons : player2.weapons;
+                const playerWeapons = isHost ? player1.weapons : player2.weapons;
                 const count = playerWeapons[key];
                 return (
-                  <button key={key} className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} onClick={() => setSelectedWeapon(key)} disabled={key !== 'simple' && count <= 0 || !isMyTurn || showFiringAnimation}>
+                  <button 
+                    key={key} 
+                    className={`weapon-btn ${selectedWeapon === key ? 'selected' : ''}`} 
+                    onClick={() => setSelectedWeapon(key)} 
+                    disabled={(key !== 'simple' && count <= 0) || !isMyTurn || showFiringAnimation}
+                  >
                     <span className="weapon-icon">{weapon.icon}</span>
                     <span className="weapon-name">{weapon.name}</span>
                     <span className="weapon-count">{key === 'simple' ? '∞' : count}</span>
@@ -2159,20 +1582,19 @@ function BattleshipESL() {
             {isWatchingQuestion ? (
               <>
                 <div className={`shot-result ${incomingShot?.gotHit ? 'hit' : 'miss'}`}>
-                  <div className="shot-result-text">{incomingShot?.gotHit ? '💥 YOUR SHIP WAS HIT!' : '💨 THEY MISSED!'}</div>
+                  <div className="shot-result-text">{incomingShot?.gotHit ? '💥 HIT!' : '💨 MISS!'}</div>
                   {incomingShot?.sunkShip && <div className="sunk-announcement">🚢 Your {incomingShot.sunkShip} was sunk!</div>}
                 </div>
-                <div className="watching-indicator">👀 Opponent is answering...</div>
+                <div className="watching-indicator">👀 Opponent answering...</div>
               </>
             ) : (
               <div className={`shot-result ${shotResults.some(r => r.result === 'hit') ? 'hit' : 'miss'}`}>
                 <div className="shot-result-text">{shotResults.some(r => r.result === 'hit') ? '💥 HIT!' : '💨 MISS!'}</div>
-                <div>{shotResults.filter(r => r.result === 'hit').length} hit(s), {shotResults.filter(r => r.result === 'miss').length} miss(es)</div>
                 {sunkShip && <div className="sunk-announcement">🚢 You sunk their {sunkShip}!</div>}
-                {extraTurn && <div className="extra-turn-notice">⚡ Answer correctly for another turn!</div>}
+                {extraTurn && <div className="extra-turn-notice">⚡ Correct = another turn!</div>}
               </div>
             )}
-            <div className="question-header">📚 Grammar Challenge ({difficulty.charAt(0).toUpperCase() + difficulty.slice(1)})</div>
+            <div className="question-header">📚 Grammar ({difficulty})</div>
             <div className="question-text">{currentQuestion.q}</div>
             <div className="options-grid">
               {currentQuestion.options.map((option, idx) => (
@@ -2195,30 +1617,26 @@ function BattleshipESL() {
       {gamePhase === 'gameover' && (
         <div className="gameover-overlay">
           <div className="gameover-content">
-            <div className="gameover-title">🏆 Victory! 🏆</div>
-            <div className="winner-text">{winner === (gameMode === 'online-host' ? 1 : 2) ? 'You Win!' : 'You Lose!'}</div>
+            <div className="gameover-title">🏆 Game Over! 🏆</div>
+            <div className="winner-text">{winner === (isHost ? 1 : 2) ? 'You Win!' : 'You Lose!'}</div>
             <button className="gameover-btn" onClick={() => window.location.reload()}>Play Again</button>
           </div>
         </div>
       )}
 
-      {/* INCOMING ATTACK OVERLAY */}
+      {/* INCOMING ATTACK */}
       {showIncomingAnimation && incomingShot && (
         <div className="incoming-attack-overlay">
-          <div className="incoming-attack-title">⚠️ INCOMING ATTACK! ⚠️</div>
+          <div className="incoming-attack-title">⚠️ INCOMING! ⚠️</div>
           <div className="grid-section">
-            <div className="grid-title">Your Fleet Under Attack!</div>
-            {renderGrid(true, gameMode === 'online-host' ? player1 : player2)}
+            {renderGrid(true, isHost ? player1 : player2)}
           </div>
           <div className={`incoming-attack-result ${incomingShot.gotHit ? 'hit' : 'miss'}`}>
-            {incomingShot.gotHit ? '💥 Your ship was hit!' : '💨 They missed!'}
+            {incomingShot.gotHit ? '💥 Hit!' : '💨 Miss!'}
           </div>
-          {incomingShot.sunkShip && (
-            <div className="incoming-sunk">🚢 Your {incomingShot.sunkShip} was sunk!</div>
-          )}
+          {incomingShot.sunkShip && <div className="incoming-sunk">🚢 {incomingShot.sunkShip} sunk!</div>}
         </div>
       )}
-
     </div>
   );
 }
