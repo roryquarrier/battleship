@@ -16,13 +16,10 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.0 (ONLINE-ONLY + IMPROVED FEATURES)
+// BATTLESHIP ESL - VERSION 9.1 (CONNECTION + DIFFICULTY SYNC FIX)
 // ============================================
 
-// Grammar Questions Database - IMPROVED SCALING
-// Easy: Basic verb forms, articles, simple present/past
-// Medium: Perfect tenses, conditionals, passive voice, comparatives
-// Hard: Inversion, subjunctive, complex conditionals, advanced passive
+// Grammar Questions Database
 const grammarQuestions = {
   easy: [
     { q: "I ___ a student.", options: ["am", "is", "are", "be"], answer: 0 },
@@ -129,14 +126,14 @@ const WEAPONS = {
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
 };
 
-// Airdrop configuration - balanced spawning
+// Airdrop configuration
 const AIRDROP_CONFIG = {
-  checkIntervalTurns: 2,      // Check every 2 turns
-  baseChance: 0.12,           // 12% base chance
-  maxChance: 0.35,            // 35% max chance after drought
-  droughtThreshold: 8,        // Increase chance after 8 checks without spawn
-  chanceIncrement: 0.05,      // Increase by 5% per drought check
-  maxAirdropsPerGame: 6       // Cap total airdrops
+  checkIntervalTurns: 2,
+  baseChance: 0.12,
+  maxChance: 0.35,
+  droughtThreshold: 8,
+  chanceIncrement: 0.05,
+  maxAirdropsPerGame: 6
 };
 
 // Helper Functions
@@ -165,7 +162,7 @@ function BattleshipESL() {
   const { useState, useEffect, useCallback, useRef } = React;
 
   // Game state
-  const [gameMode, setGameMode] = useState(null);
+  const [gameMode, setGameMode] = useState(null); // null, 'online-host', 'online-joiner'
   const [gamePhase, setGamePhase] = useState('menu');
   const [difficulty, setDifficulty] = useState('easy');
   const [winner, setWinner] = useState(null);
@@ -223,6 +220,7 @@ function BattleshipESL() {
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   
   // Animation states
   const [incomingShot, setIncomingShot] = useState(null);
@@ -241,6 +239,7 @@ function BattleshipESL() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const gameModeRef = useRef(null);
+  const difficultyRef = useRef(difficulty);
   const mySetupCompleteRef = useRef(false);
   const waitingRef = useRef(false);
   const player1Ref = useRef(player1);
@@ -249,6 +248,10 @@ function BattleshipESL() {
   useEffect(() => {
     gameModeRef.current = gameMode;
   }, [gameMode]);
+
+  useEffect(() => {
+    difficultyRef.current = difficulty;
+  }, [difficulty]);
 
   useEffect(() => {
     player1Ref.current = player1;
@@ -290,60 +293,135 @@ function BattleshipESL() {
 
   // Online Multiplayer Functions
   const initializePeer = useCallback((isHost) => {
+    // Check if PeerJS is already loaded
+    if (window.Peer) {
+      createPeer(isHost);
+      return;
+    }
+    
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-    script.onload = () => {
-      const newPeer = new window.Peer();
-      newPeer.on('open', (id) => {
-        setPeerId(id);
-        peerRef.current = newPeer;
-        setPeer(newPeer);
-        if (isHost) setIsMyTurn(true);
-      });
-      newPeer.on('connection', (connection) => {
-        connRef.current = connection;
-        setConn(connection);
-        setupConnection(connection);
-      });
-      newPeer.on('error', (err) => {
-        console.error('Peer error:', err);
-        alert('Connection error: ' + err.message);
-      });
+    script.onload = () => createPeer(isHost);
+    script.onerror = () => {
+      setConnectionError('Failed to load networking library. Please refresh and try again.');
     };
     document.head.appendChild(script);
   }, []);
 
+  const createPeer = (isHost) => {
+    try {
+      const newPeer = new window.Peer();
+      
+      newPeer.on('open', (id) => {
+        console.log('Peer opened with ID:', id);
+        setPeerId(id);
+        peerRef.current = newPeer;
+        setPeer(newPeer);
+        if (isHost) setIsMyTurn(true);
+        setConnectionError(null);
+      });
+      
+      newPeer.on('connection', (connection) => {
+        console.log('Received connection from:', connection.peer);
+        connRef.current = connection;
+        setConn(connection);
+        setupConnection(connection, true); // true = I am host receiving connection
+      });
+      
+      newPeer.on('error', (err) => {
+        console.error('Peer error:', err);
+        setConnectionError('Connection error: ' + err.type);
+      });
+      
+      newPeer.on('disconnected', () => {
+        console.log('Peer disconnected');
+        setConnectionError('Disconnected from server. Trying to reconnect...');
+        newPeer.reconnect();
+      });
+    } catch (err) {
+      console.error('Failed to create peer:', err);
+      setConnectionError('Failed to create connection. Please refresh and try again.');
+    }
+  };
+
   const connectToPeer = useCallback((remoteId) => {
     if (peerRef.current && remoteId) {
-      const connection = peerRef.current.connect(remoteId);
-      connRef.current = connection;
-      setConn(connection);
-      setupConnection(connection);
+      console.log('Connecting to peer:', remoteId);
+      setConnectionError(null);
+      
+      try {
+        const connection = peerRef.current.connect(remoteId, {
+          reliable: true
+        });
+        
+        connection.on('error', (err) => {
+          console.error('Connection error:', err);
+          setConnectionError('Failed to connect: ' + err);
+        });
+        
+        connRef.current = connection;
+        setConn(connection);
+        setupConnection(connection, false); // false = I am joiner initiating connection
+      } catch (err) {
+        console.error('Connect error:', err);
+        setConnectionError('Failed to connect. Check the game code and try again.');
+      }
     }
   }, []);
 
-  const setupConnection = (connection) => {
+  const setupConnection = (connection, isHost) => {
     connection.on('open', () => {
+      console.log('Connection opened! isHost:', isHost);
       setIsConnected(true);
+      setConnectionError(null);
+      
+      // FIXED: Host sends game settings (difficulty) to joiner
+      if (isHost) {
+        // Host sends difficulty setting
+        setTimeout(() => {
+          connection.send({ 
+            type: 'game-settings', 
+            difficulty: difficultyRef.current 
+          });
+        }, 100);
+      }
+      
       setGamePhase('setup');
     });
+    
     connection.on('data', (data) => handleOnlineMessage(data));
+    
     connection.on('close', () => {
+      console.log('Connection closed');
       setIsConnected(false);
-      alert('Connection closed');
+      setConnectionError('Connection closed. Your opponent may have disconnected.');
+    });
+    
+    connection.on('error', (err) => {
+      console.error('Connection error:', err);
+      setConnectionError('Connection error occurred.');
     });
   };
 
   const sendMessage = useCallback((message) => {
     if (connRef.current && connRef.current.open) {
       connRef.current.send(message);
+    } else {
+      console.warn('Cannot send message - connection not open');
     }
   }, []);
 
   const handleOnlineMessage = (data) => {
     const currentGameMode = gameModeRef.current;
+    console.log('Received message:', data.type, currentGameMode);
     
     switch (data.type) {
+      // FIXED: Handle game settings from host
+      case 'game-settings':
+        console.log('Received game settings, difficulty:', data.difficulty);
+        setDifficulty(data.difficulty);
+        break;
+        
       case 'setup-complete':
         if (currentGameMode === 'online-host') {
           setPlayer2(prev => ({ ...prev, grid: data.grid, ships: data.ships, gifts: data.gifts || [] }));
@@ -411,7 +489,6 @@ function BattleshipESL() {
         break;
         
       case 'airdrop-spawned':
-        // Opponent spawned an airdrop on their grid
         if (currentGameMode === 'online-host') {
           setPlayer2(prev => ({ ...prev, gifts: [...prev.gifts, data.gift] }));
         } else {
@@ -485,7 +562,7 @@ function BattleshipESL() {
       gifts: myGifts
     }));
 
-    const question = shipsRemaining > 0 ? getRandomQuestion(difficulty) : null;
+    const question = shipsRemaining > 0 ? getRandomQuestion(difficultyRef.current) : null;
 
     sendMessage({
       type: 'shot-result',
@@ -545,9 +622,8 @@ function BattleshipESL() {
     }
   };
 
-  // Ship Placement Functions - IMPROVED: Check for adjacency
-  const canPlaceShip = (grid, row, col, size, horizontal, existingShips = []) => {
-    // First check basic bounds and overlap
+  // Ship Placement Functions
+  const canPlaceShip = (grid, row, col, size, horizontal) => {
     for (let i = 0; i < size; i++) {
       const r = horizontal ? row : row + i;
       const c = horizontal ? col + i : col;
@@ -556,22 +632,19 @@ function BattleshipESL() {
     return true;
   };
 
-  // NEW: Check minimum separation between ships
   const checkMinimumSeparation = (grid, row, col, size, horizontal) => {
-    // Check all cells around the proposed ship placement
     for (let i = 0; i < size; i++) {
       const r = horizontal ? row : row + i;
       const c = horizontal ? col + i : col;
       
-      // Check all 8 adjacent cells + the cell itself
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue; // Skip the cell itself
+          if (dr === 0 && dc === 0) continue;
           const checkR = r + dr;
           const checkC = c + dc;
           if (checkR >= 0 && checkR < GRID_SIZE && checkC >= 0 && checkC < GRID_SIZE) {
             if (grid[checkR][checkC] !== null) {
-              return false; // Adjacent to another ship
+              return false;
             }
           }
         }
@@ -614,7 +687,7 @@ function BattleshipESL() {
   };
 
   const completeSetup = (grid, ships) => {
-    const gifts = spawnInitialGifts(grid, 2); // Start with 2 gifts
+    const gifts = spawnInitialGifts(grid, 2);
     
     if (gameMode === 'online-host') {
       setPlayer1(prev => ({ ...prev, grid, ships, gifts }));
@@ -638,7 +711,6 @@ function BattleshipESL() {
     }
   };
 
-  // Initial gifts spawn
   const spawnInitialGifts = (grid, count) => {
     const gifts = [];
     const emptyCells = [];
@@ -657,7 +729,6 @@ function BattleshipESL() {
     return gifts;
   };
 
-  // IMPROVED: Airdrop spawning during game - balanced probability system
   const checkAndSpawnAirdrop = useCallback(() => {
     if (totalAirdrops >= AIRDROP_CONFIG.maxAirdropsPerGame) return;
     
@@ -665,7 +736,6 @@ function BattleshipESL() {
     const myPlayer = currentGameMode === 'online-host' ? player1Ref.current : player2Ref.current;
     const setMyPlayer = currentGameMode === 'online-host' ? setPlayer1 : setPlayer2;
     
-    // Calculate current spawn chance
     let currentChance = AIRDROP_CONFIG.baseChance;
     if (airdropsSinceLastSpawn >= AIRDROP_CONFIG.droughtThreshold) {
       currentChance = Math.min(
@@ -676,12 +746,10 @@ function BattleshipESL() {
     
     const roll = Math.random();
     if (roll < currentChance) {
-      // Spawn an airdrop!
       const grid = myPlayer.grid;
       const received = myPlayer.received;
       const existingGifts = myPlayer.gifts || [];
       
-      // Find valid empty cells (not hit, not a ship, not already a gift)
       const emptyCells = [];
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -694,7 +762,7 @@ function BattleshipESL() {
       if (emptyCells.length > 0) {
         const [r, c] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         const weaponTypes = ['big', 'rain', 'nuclear'];
-        const weaponWeights = [0.5, 0.35, 0.15]; // Big more common, nuclear rare
+        const weaponWeights = [0.5, 0.35, 0.15];
         let weightRoll = Math.random();
         let weaponType = 'big';
         for (let i = 0; i < weaponTypes.length; i++) {
@@ -712,7 +780,6 @@ function BattleshipESL() {
           gifts: [...(prev.gifts || []), newGift]
         }));
         
-        // Notify opponent
         sendMessage({ type: 'airdrop-spawned', gift: newGift });
         
         setTotalAirdrops(prev => prev + 1);
@@ -727,7 +794,6 @@ function BattleshipESL() {
     setAirdropCheckCount(prev => prev + 1);
   }, [totalAirdrops, airdropsSinceLastSpawn, sendMessage]);
 
-  // IMPROVED: Random ship placement with minimum separation
   const randomPlaceShips = () => {
     const grid = createEmptyGrid();
     const ships = [];
@@ -735,12 +801,11 @@ function BattleshipESL() {
     for (let i = 0; i < SHIPS.length; i++) {
       const ship = SHIPS[i];
       let placed = false, attempts = 0;
-      while (!placed && attempts < 200) { // More attempts for stricter placement
+      while (!placed && attempts < 200) {
         const horizontal = Math.random() > 0.5;
         const row = Math.floor(Math.random() * GRID_SIZE);
         const col = Math.floor(Math.random() * GRID_SIZE);
         
-        // Check both basic placement AND minimum separation
         if (canPlaceShip(grid, row, col, ship.size, horizontal) && 
             checkMinimumSeparation(grid, row, col, ship.size, horizontal)) {
           const shipCells = [];
@@ -756,7 +821,6 @@ function BattleshipESL() {
         attempts++;
       }
       
-      // Fallback if we couldn't place with separation (should be rare)
       if (!placed) {
         attempts = 0;
         while (!placed && attempts < 100) {
@@ -788,7 +852,6 @@ function BattleshipESL() {
     completeSetup(grid, ships);
   };
 
-  // IMPROVED: Battle Functions with firing animation
   const fireWeapon = (row, col) => {
     if (!isMyTurn) return;
     
@@ -800,7 +863,6 @@ function BattleshipESL() {
     const attackerTracking = gameMode === 'online-host' ? player1.tracking : player2.tracking;
     if (attackerTracking[row][col] !== null) return;
     
-    // Trigger firing animation FIRST
     const pattern = selectedWeapon === 'rain' ? generateRainPattern() : weapon.pattern;
     const targetCells = pattern.map(([dx, dy]) => [row + dx, col + dy]).filter(
       ([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE
@@ -814,7 +876,6 @@ function BattleshipESL() {
     });
     setShowFiringAnimation(true);
     
-    // Animation sequence: launch -> travel -> impact
     setTimeout(() => {
       setFiringAnimation(prev => ({ ...prev, phase: 'travel' }));
     }, 300);
@@ -823,12 +884,10 @@ function BattleshipESL() {
       setFiringAnimation(prev => ({ ...prev, phase: 'impact' }));
     }, 800);
     
-    // After animation completes, send the shot
     setTimeout(() => {
       setShowFiringAnimation(false);
       setFiringAnimation(null);
       
-      // Increment turn count and check for airdrop
       setTurnCount(prev => {
         const newCount = prev + 1;
         if (newCount % AIRDROP_CONFIG.checkIntervalTurns === 0) {
@@ -851,7 +910,6 @@ function BattleshipESL() {
     }, 1300);
   };
 
-  // Question Handling
   const handleAnswer = (index) => {
     if (isWatchingQuestion) return;
     
@@ -903,7 +961,6 @@ function BattleshipESL() {
     const incomingResult = hasIncomingHit ? 
       incomingShot.results.find(r => r.row === row && r.col === col)?.result : null;
     
-    // Check if this cell is being targeted by firing animation
     const isFiringTarget = showFiringAnimation && firingAnimation && 
       firingAnimation.targets.some(([r, c]) => r === row && c === col);
     
@@ -929,7 +986,6 @@ function BattleshipESL() {
       }
       if (gift && !hit) content = '🎁';
     } else {
-      // Enemy grid
       if (hit === 'hit') {
         className += ' hit';
         content = '💥';
@@ -943,7 +999,6 @@ function BattleshipESL() {
         className += ' enemy';
       }
       
-      // Firing animation target indicator
       if (isFiringTarget) {
         className += ` firing-target firing-${firingAnimation.phase}`;
       }
@@ -989,7 +1044,16 @@ function BattleshipESL() {
     </div>
   );
 
-  // Styles - IMPROVED: Better centering and firing animations
+  const getDifficultyHint = () => {
+    switch(difficulty) {
+      case 'easy': return 'Basic grammar: be verbs, simple present, articles';
+      case 'medium': return 'Intermediate: perfect tenses, conditionals, passive';
+      case 'hard': return 'Advanced: inversion, subjunctive, complex structures';
+      default: return '';
+    }
+  };
+
+  // Styles
   const styles = `
     .game-container {
       min-height: 100vh;
@@ -1050,6 +1114,10 @@ function BattleshipESL() {
     .difficulty-selector {
       margin-bottom: 30px;
     }
+    .difficulty-selector.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
     .difficulty-label {
       display: block;
       text-align: center;
@@ -1084,6 +1152,12 @@ function BattleshipESL() {
       margin-top: 10px;
       font-style: italic;
     }
+    .joiner-difficulty-notice {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #fbbf24;
+      margin-top: 8px;
+    }
     .menu-btn {
       width: 100%;
       padding: 15px;
@@ -1114,6 +1188,16 @@ function BattleshipESL() {
       padding: 20px;
       background: rgba(0, 0, 0, 0.2);
       border-radius: 10px;
+    }
+    .connection-error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+      text-align: center;
     }
     .peer-id-display {
       background: rgba(0, 0, 0, 0.4);
@@ -1197,13 +1281,19 @@ function BattleshipESL() {
       height: 10px;
       border-radius: 50%;
       background: #ef4444;
+      animation: dotPulse 1.5s ease-in-out infinite;
     }
     .status-dot.connected {
       background: #22c55e;
       box-shadow: 0 0 10px #22c55e;
+      animation: none;
+    }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
     
-    /* Setup Styles - IMPROVED CENTERING */
+    /* Setup Styles */
     .setup-container {
       display: flex;
       flex-direction: column;
@@ -1354,7 +1444,7 @@ function BattleshipESL() {
       font-size: 0.9rem;
     }
     
-    /* Firing Animation Styles */
+    /* Firing Animation */
     .cell.firing-target {
       position: relative;
       overflow: visible;
@@ -1422,7 +1512,7 @@ function BattleshipESL() {
       100% { transform: scale(1); }
     }
     
-    /* Battle Styles - IMPROVED CENTERING */
+    /* Battle Styles */
     .battle-container {
       display: flex;
       flex-direction: column;
@@ -1801,165 +1891,74 @@ function BattleshipESL() {
     
     /* Responsive */
     @media (max-width: 900px) {
-      .grids-container {
-        gap: 20px;
-      }
-      .grid {
-        grid-template-columns: repeat(10, 32px);
-      }
-      .cell {
-        width: 32px;
-        height: 32px;
-      }
+      .grids-container { gap: 20px; }
+      .grid { grid-template-columns: repeat(10, 32px); }
+      .cell { width: 32px; height: 32px; }
       .corner { width: 26px; height: 26px; }
       .label { width: 32px; height: 26px; font-size: 0.75rem; }
       .grid-labels-side .label { width: 26px; height: 32px; }
     }
     
     @media (max-width: 768px) {
-      .title {
-        font-size: 1.4rem;
-      }
-      .subtitle {
-        font-size: 0.85rem;
-      }
-      .header {
-        padding: 10px 0;
-      }
-      .grids-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 15px;
-      }
-      .grid {
-        grid-template-columns: repeat(10, 30px);
-      }
-      .cell {
-        width: 30px;
-        height: 30px;
-        font-size: 0.85rem;
-      }
+      .title { font-size: 1.4rem; }
+      .subtitle { font-size: 0.85rem; }
+      .header { padding: 10px 0; }
+      .grids-container { flex-direction: column; align-items: center; gap: 15px; }
+      .grid { grid-template-columns: repeat(10, 30px); }
+      .cell { width: 30px; height: 30px; font-size: 0.85rem; }
       .corner { width: 24px; height: 24px; }
       .label { width: 30px; height: 24px; font-size: 0.7rem; }
       .grid-labels-side .label { width: 24px; height: 30px; }
-      .turn-indicator {
-        font-size: 1.1rem;
-        padding: 8px 15px;
-      }
-      .weapons-grid {
-        gap: 6px;
-      }
-      .weapon-btn {
-        min-width: 60px;
-        padding: 6px 10px;
-      }
+      .turn-indicator { font-size: 1.1rem; padding: 8px 15px; }
+      .weapons-grid { gap: 6px; }
+      .weapon-btn { min-width: 60px; padding: 6px 10px; }
       .weapon-icon { font-size: 1.1rem; }
       .weapon-name { font-size: 0.65rem; }
       .weapon-count { font-size: 0.6rem; }
     }
     
     @media (max-width: 600px) {
-      .title {
-        font-size: 1.2rem;
-      }
-      .grid {
-        grid-template-columns: repeat(10, 28px);
-        padding: 3px;
-        gap: 1px;
-      }
-      .cell {
-        width: 28px;
-        height: 28px;
-        font-size: 0.8rem;
-        border-radius: 3px;
-      }
+      .title { font-size: 1.2rem; }
+      .grid { grid-template-columns: repeat(10, 28px); padding: 3px; gap: 1px; }
+      .cell { width: 28px; height: 28px; font-size: 0.8rem; border-radius: 3px; }
       .corner { width: 22px; height: 22px; }
       .label { width: 28px; height: 22px; font-size: 0.65rem; }
       .grid-labels-side .label { width: 22px; height: 28px; }
-      .grid-title {
-        font-size: 0.95rem;
-      }
-      .ships-status {
-        gap: 3px;
-      }
-      .ship-status {
-        padding: 3px 6px;
-        font-size: 0.6rem;
-      }
+      .grid-title { font-size: 0.95rem; }
+      .ships-status { gap: 3px; }
+      .ship-status { padding: 3px 6px; font-size: 0.6rem; }
     }
     
     @media (max-width: 400px) {
-      .game-container {
-        padding: 8px;
-      }
-      .title {
-        font-size: 1.1rem;
-      }
-      .header {
-        padding: 5px 0;
-      }
-      .grid {
-        grid-template-columns: repeat(10, 26px);
-        padding: 2px;
-        gap: 1px;
-      }
-      .cell {
-        width: 26px;
-        height: 26px;
-        font-size: 0.75rem;
-        border-radius: 2px;
-      }
+      .game-container { padding: 8px; }
+      .title { font-size: 1.1rem; }
+      .header { padding: 5px 0; }
+      .grid { grid-template-columns: repeat(10, 26px); padding: 2px; gap: 1px; }
+      .cell { width: 26px; height: 26px; font-size: 0.75rem; border-radius: 2px; }
       .corner { width: 20px; height: 20px; }
       .label { width: 26px; height: 20px; font-size: 0.6rem; }
       .grid-labels-side .label { width: 20px; height: 26px; }
-      .turn-indicator {
-        font-size: 0.95rem;
-        padding: 6px 12px;
-      }
-      .weapons-panel {
-        margin-top: 15px;
-      }
-      .weapons-title {
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-      }
-      .weapons-grid {
-        gap: 4px;
-        max-width: 100%;
-      }
-      .weapon-btn {
-        min-width: 55px;
-        padding: 5px 8px;
-      }
+      .turn-indicator { font-size: 0.95rem; padding: 6px 12px; }
+      .weapons-panel { margin-top: 15px; }
+      .weapons-title { font-size: 0.9rem; margin-bottom: 8px; }
+      .weapons-grid { gap: 4px; max-width: 100%; }
+      .weapon-btn { min-width: 55px; padding: 5px 8px; }
       .weapon-icon { font-size: 1rem; }
       .weapon-name { font-size: 0.55rem; }
       .weapon-count { font-size: 0.55rem; }
     }
     
     @media (max-width: 360px) {
-      .grid {
-        grid-template-columns: repeat(10, 24px);
-      }
-      .cell {
-        width: 24px;
-        height: 24px;
-        font-size: 0.7rem;
-      }
+      .grid { grid-template-columns: repeat(10, 24px); }
+      .cell { width: 24px; height: 24px; font-size: 0.7rem; }
       .corner { width: 18px; height: 18px; }
       .label { width: 24px; height: 18px; font-size: 0.55rem; }
       .grid-labels-side .label { width: 18px; height: 24px; }
     }
   `;
 
-  // Get difficulty hint text
-  const getDifficultyHint = () => {
-    switch(difficulty) {
-      case 'easy': return 'Basic grammar: be verbs, simple present, articles';
-      case 'medium': return 'Intermediate: perfect tenses, conditionals, passive';
-      case 'hard': return 'Advanced: inversion, subjunctive, complex structures';
-      default: return '';
-    }
-  };
+  // Check if user is joiner (can't change difficulty)
+  const isJoiner = gameMode === 'online-joiner';
 
   return (
     <div className="game-container">
@@ -1975,32 +1974,44 @@ function BattleshipESL() {
         <div className="airdrop-notification">{newAirdropMessage}</div>
       )}
 
-      {/* MENU PHASE - ONLINE ONLY */}
+      {/* MENU PHASE */}
       {gamePhase === 'menu' && (
         <div className="menu-container">
           <div className="menu-panel">
             <div className="menu-title">🎮 Online Multiplayer</div>
             
-            <div className="difficulty-selector">
+            {/* Difficulty selector - disabled for joiner */}
+            <div className={`difficulty-selector ${isJoiner ? 'disabled' : ''}`}>
               <span className="difficulty-label">Grammar Difficulty</span>
               <div className="difficulty-buttons">
-                <button className={`diff-btn ${difficulty === 'easy' ? 'active' : ''}`} onClick={() => setDifficulty('easy')}>Easy</button>
-                <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => setDifficulty('medium')}>Medium</button>
-                <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => setDifficulty('hard')}>Hard</button>
+                <button className={`diff-btn ${difficulty === 'easy' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('easy')}>Easy</button>
+                <button className={`diff-btn ${difficulty === 'medium' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('medium')}>Medium</button>
+                <button className={`diff-btn ${difficulty === 'hard' ? 'active' : ''}`} onClick={() => !isJoiner && setDifficulty('hard')}>Hard</button>
               </div>
               <div className="difficulty-hint">{getDifficultyHint()}</div>
+              {isJoiner && <div className="joiner-difficulty-notice">⚠️ Host sets the difficulty</div>}
             </div>
-            
-            <button className="menu-btn primary" onClick={() => { setGameMode('online-host'); initializePeer(true); }}>
-              🌐 Host Online Game
-            </button>
-            
-            <button className="menu-btn" onClick={() => { setGameMode('online-join'); initializePeer(false); }}>
-              🔗 Join Online Game
-            </button>
 
-            {(gameMode === 'online-host' || gameMode === 'online-join') && (
+            {/* Show buttons only before selecting a mode */}
+            {!gameMode && (
+              <>
+                <button className="menu-btn primary" onClick={() => { setGameMode('online-host'); initializePeer(true); }}>
+                  🌐 Host Online Game
+                </button>
+                
+                <button className="menu-btn" onClick={() => { setGameMode('online-joiner'); initializePeer(false); }}>
+                  🔗 Join Online Game
+                </button>
+              </>
+            )}
+
+            {/* Connection panel */}
+            {(gameMode === 'online-host' || gameMode === 'online-joiner') && (
               <div className="connection-panel">
+                {connectionError && (
+                  <div className="connection-error">{connectionError}</div>
+                )}
+                
                 {gameMode === 'online-host' && (
                   <>
                     <div>Share this code with your opponent:</div>
@@ -2015,7 +2026,7 @@ function BattleshipESL() {
                     </div>
                   </>
                 )}
-                {gameMode === 'online-join' && (
+                {gameMode === 'online-joiner' && (
                   <>
                     <div>Enter host's game code:</div>
                     <div className="paste-input-wrapper">
@@ -2048,7 +2059,7 @@ function BattleshipESL() {
                 )}
                 <div className="status-indicator">
                   <div className={`status-dot ${isConnected ? 'connected' : ''}`}></div>
-                  <span>{isConnected ? 'Connected!' : 'Waiting for connection...'}</span>
+                  <span>{isConnected ? 'Connected! Starting game...' : 'Waiting for connection...'}</span>
                 </div>
               </div>
             )}
@@ -2082,7 +2093,7 @@ function BattleshipESL() {
         </div>
       )}
 
-      {/* Waiting for opponent overlay */}
+      {/* Waiting overlay */}
       {waitingForOpponent && gamePhase === 'setup' && (
         <div className="waiting-overlay">
           <div className="waiting-content">
