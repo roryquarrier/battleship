@@ -17,7 +17,7 @@
   <div id="root"></div>
   <script type="text/babel">
 // ============================================
-// BATTLESHIP ESL - VERSION 9.3 (ROBUST CONNECTION)
+// BATTLESHIP ESL - VERSION 9.4 (RELIABLE ICE)
 // ============================================
 
 const grammarQuestions = {
@@ -80,6 +80,20 @@ const WEAPONS = {
   nuclear: { name: 'Nuclear Strike', pattern: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,0],[0,1],[1,-1],[1,0],[1,1]], icon: '☢️' }
 };
 
+// ICE Server configuration for reliable WebRTC connections
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.stunprotocol.org:3478' }
+  ],
+  sdpSemantics: 'unified-plan'
+};
+
 const createEmptyGrid = () => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
 const getRandomQuestion = (difficulty) => {
   const questions = grammarQuestions[difficulty];
@@ -127,12 +141,13 @@ function BattleshipESL() {
   const [answerResult, setAnswerResult] = useState(null);
   const [isWatchingQuestion, setIsWatchingQuestion] = useState(false);
 
-  // Connection state - simplified and explicit
+  // Connection state
   const [myPeerId, setMyPeerId] = useState('');
   const [hostCode, setHostCode] = useState('');
   const [peerReady, setPeerReady] = useState(false);
   const [connected, setConnected] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [debugLog, setDebugLog] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -158,6 +173,11 @@ function BattleshipESL() {
   useEffect(() => { player2Ref.current = player2; }, [player2]);
   useEffect(() => { waitingRef.current = waitingForOpponent; }, [waitingForOpponent]);
 
+  const log = (msg) => {
+    console.log('[BSL]', msg);
+    setDebugLog(prev => [...prev.slice(-9), msg]);
+  };
+
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -179,14 +199,16 @@ function BattleshipESL() {
   const sendMsg = useCallback((msg) => {
     if (connRef.current && connRef.current.open) {
       connRef.current.send(msg);
+      log('SENT: ' + msg.type);
       return true;
     }
+    log('SEND FAILED - no connection');
     return false;
   }, []);
 
   // Handle incoming messages
   const onMessage = useCallback((data) => {
-    console.log('MSG:', data.type);
+    log('RECV: ' + data.type);
     const isHost = gameModeRef.current === 'online-host';
 
     if (data.type === 'settings') {
@@ -246,93 +268,127 @@ function BattleshipESL() {
 
   // Setup connection handlers
   const setupConn = useCallback((conn, isHost) => {
+    log('Setting up connection handlers...');
+    
     conn.on('open', () => {
-      console.log('Connection OPEN');
+      log('CONNECTION OPEN!');
+      connRef.current = conn;
       setConnected(true);
       setStatusMsg('Connected!');
       
       if (isHost) {
-        // Host sends settings then moves to setup
         setTimeout(() => {
+          log('Host sending settings...');
           conn.send({ type: 'settings', difficulty: difficultyRef.current });
           setGamePhase('setup');
-        }, 300);
+        }, 500);
       }
-      // Joiner waits for settings message to move to setup
     });
 
     conn.on('data', onMessage);
 
     conn.on('close', () => {
-      console.log('Connection CLOSED');
+      log('Connection closed');
       setConnected(false);
-      setStatusMsg('Connection lost!');
+      setStatusMsg('Connection lost');
     });
 
     conn.on('error', (err) => {
-      console.error('Conn error:', err);
-      setStatusMsg('Connection error!');
+      log('Connection error: ' + err.type);
+      setStatusMsg('Error: ' + err.type);
     });
+
+    // Also handle if connection is already open (race condition)
+    if (conn.open) {
+      log('Connection already open!');
+      connRef.current = conn;
+      setConnected(true);
+      setStatusMsg('Connected!');
+      if (isHost) {
+        setTimeout(() => {
+          log('Host sending settings (already open)...');
+          conn.send({ type: 'settings', difficulty: difficultyRef.current });
+          setGamePhase('setup');
+        }, 500);
+      }
+    }
   }, [onMessage]);
 
   // HOST: Create peer and wait for connection
   const startHost = useCallback(() => {
     if (!window.Peer) {
-      setStatusMsg('Error: PeerJS not loaded!');
+      setStatusMsg('Error: PeerJS not loaded');
       return;
     }
 
     setGameMode('online-host');
     setStatusMsg('Creating game...');
     setIsMyTurn(true);
+    log('Starting host...');
 
-    const peer = new Peer();
+    const peer = new Peer(null, { 
+      debug: 2,
+      config: ICE_SERVERS
+    });
     peerRef.current = peer;
 
     peer.on('open', (id) => {
-      console.log('Host peer open:', id);
+      log('Host peer open: ' + id.substring(0, 8));
       setMyPeerId(id);
       setPeerReady(true);
       setStatusMsg('Share code with opponent');
     });
 
     peer.on('connection', (conn) => {
-      console.log('Incoming connection!');
-      connRef.current = conn;
+      log('Incoming connection from: ' + conn.peer.substring(0, 8));
       setStatusMsg('Opponent connecting...');
       setupConn(conn, true);
     });
 
     peer.on('error', (err) => {
-      console.error('Peer error:', err);
+      log('Peer error: ' + err.type);
       setStatusMsg('Error: ' + err.type);
+    });
+
+    peer.on('disconnected', () => {
+      log('Peer disconnected, reconnecting...');
+      peer.reconnect();
     });
   }, [setupConn]);
 
   // JOINER: Create peer
   const startJoin = useCallback(() => {
     if (!window.Peer) {
-      setStatusMsg('Error: PeerJS not loaded!');
+      setStatusMsg('Error: PeerJS not loaded');
       return;
     }
 
     setGameMode('online-joiner');
     setStatusMsg('Initializing...');
     setIsMyTurn(false);
+    log('Starting joiner...');
 
-    const peer = new Peer();
+    const peer = new Peer(null, { 
+      debug: 2,
+      config: ICE_SERVERS
+    });
     peerRef.current = peer;
 
     peer.on('open', (id) => {
-      console.log('Joiner peer open:', id);
+      log('Joiner peer open: ' + id.substring(0, 8));
       setMyPeerId(id);
       setPeerReady(true);
-      setStatusMsg('Enter host code and connect');
+      setStatusMsg('Ready - enter code');
     });
 
     peer.on('error', (err) => {
-      console.error('Peer error:', err);
+      log('Peer error: ' + err.type);
       setStatusMsg('Error: ' + err.type);
+    });
+
+    peer.on('disconnected', () => {
+      log('Peer disconnected, reconnecting...');
+      peer.reconnect();
     });
   }, []);
 
@@ -340,23 +396,31 @@ function BattleshipESL() {
   const doConnect = useCallback(() => {
     const code = hostCode.trim();
     if (!code) {
-      setStatusMsg('Enter the host code first!');
+      setStatusMsg('Enter the code first');
       return;
     }
-    if (!peerRef.current) {
-      setStatusMsg('Peer not ready - wait a moment');
-      return;
-    }
-    if (!peerReady) {
-      setStatusMsg('Still initializing - wait...');
+    if (!peerRef.current || !peerReady) {
+      setStatusMsg('Not ready yet...');
       return;
     }
 
-    setStatusMsg('Connecting to ' + code.substring(0, 8) + '...');
+    log('Connecting to: ' + code.substring(0, 8));
+    setStatusMsg('Connecting...');
 
-    const conn = peerRef.current.connect(code, { reliable: true });
-    connRef.current = conn;
+    const conn = peerRef.current.connect(code, { 
+      reliable: true,
+      serialization: 'json'
+    });
+    
     setupConn(conn, false);
+
+    // Timeout for connection
+    setTimeout(() => {
+      if (!connRef.current || !connRef.current.open) {
+        log('Connection timeout');
+        setStatusMsg('Connection timeout - try again');
+      }
+    }, 15000);
   }, [hostCode, peerReady, setupConn]);
 
   // Go back to menu
@@ -372,6 +436,7 @@ function BattleshipESL() {
     setPeerReady(false);
     setConnected(false);
     setStatusMsg('');
+    setDebugLog([]);
   }, []);
 
   // Handle incoming shot
@@ -704,17 +769,20 @@ function BattleshipESL() {
     .diff-btns { display:flex; gap:8px; justify-content:center; }
     .diff-btn { padding:8px 16px; border:2px solid #334155; background:transparent; color:#fff; border-radius:8px; cursor:pointer; }
     .diff-btn:hover,.diff-btn.active { border-color:#00d9ff; background:rgba(0,217,255,0.15); }
-    .code-display { background:rgba(0,0,0,0.5); padding:14px; border-radius:8px; font-family:monospace; font-size:0.8rem; word-break:break-all; margin:10px 0; text-align:center; cursor:pointer; border:2px solid transparent; }
+    .code-display { background:rgba(0,0,0,0.5); padding:14px; border-radius:8px; font-family:monospace; font-size:0.75rem; word-break:break-all; margin:10px 0; text-align:center; cursor:pointer; border:2px solid transparent; }
     .code-display:hover { border-color:#00d9ff; }
     .code-display.copied { border-color:#00ff88; background:rgba(0,255,136,0.1); }
     .copy-hint { font-size:0.7rem; color:#8892b0; text-align:center; }
     .copy-hint.success { color:#00ff88; }
-    .code-input { width:100%; padding:12px; border:2px solid #334155; border-radius:8px; background:rgba(0,0,0,0.4); color:#fff; font-size:0.95rem; margin:8px 0; }
+    .code-input { width:100%; padding:12px; border:2px solid #334155; border-radius:8px; background:rgba(0,0,0,0.4); color:#fff; font-size:0.85rem; font-family:monospace; margin:8px 0; }
     .code-input:focus { outline:none; border-color:#00d9ff; }
     .status-box { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; font-size:0.9rem; }
     .status-dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
-    .status-dot.ready { background:#fbbf24; }
+    .status-dot.ready { background:#fbbf24; animation:pulse-dot 1s infinite; }
     .status-dot.connected { background:#22c55e; box-shadow:0 0 8px #22c55e; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .debug-log { margin-top:12px; padding:8px; background:rgba(0,0,0,0.4); border-radius:6px; font-size:0.65rem; font-family:monospace; max-height:100px; overflow-y:auto; }
+    .debug-log div { padding:2px 0; color:#8892b0; }
     .setup-container { display:flex; flex-direction:column; align-items:center; max-width:600px; }
     .setup-header { text-align:center; margin-bottom:15px; }
     .player-ind { font-size:1.3rem; font-weight:bold; color:#00d9ff; margin-bottom:12px; }
@@ -787,7 +855,6 @@ function BattleshipESL() {
     .gameover-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:100; }
     .gameover-content { text-align:center; }
     .gameover-title { font-size:2.5rem; margin-bottom:15px; }
-    .winner-text { font-size:1.8rem; color:#00d9ff; margin-bottom:25px; }
     .gameover-btn { padding:12px 35px; font-size:1.1rem; border:none; border-radius:10px; background:linear-gradient(135deg,#00d9ff,#00ff88); color:#1a1a2e; font-weight:bold; cursor:pointer; }
     .waiting-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:50; }
     .waiting-content { text-align:center; }
@@ -847,6 +914,12 @@ function BattleshipESL() {
                   <span>{statusMsg}</span>
                 </div>
 
+                {debugLog.length > 0 && (
+                  <div className="debug-log">
+                    {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+                  </div>
+                )}
+
                 <button className="menu-btn back" onClick={goBack}>← Back</button>
               </div>
             )}
@@ -859,7 +932,7 @@ function BattleshipESL() {
                 <input
                   className="code-input"
                   type="text"
-                  placeholder="Paste code here"
+                  placeholder="Paste the full code here"
                   value={hostCode}
                   onChange={(e) => setHostCode(e.target.value)}
                 />
@@ -867,15 +940,21 @@ function BattleshipESL() {
                 <button
                   className="menu-btn primary"
                   onClick={doConnect}
-                  disabled={!peerReady || !hostCode.trim()}
+                  disabled={!peerReady || !hostCode.trim() || connected}
                 >
-                  {peerReady ? 'Connect' : 'Initializing...'}
+                  {connected ? 'Connected!' : peerReady ? 'Connect' : 'Initializing...'}
                 </button>
 
                 <div className="status-box">
                   <div className={`status-dot ${connected?'connected':peerReady?'ready':''}`}></div>
                   <span>{statusMsg}</span>
                 </div>
+
+                {debugLog.length > 0 && (
+                  <div className="debug-log">
+                    {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+                  </div>
+                )}
 
                 <button className="menu-btn back" onClick={goBack}>← Back</button>
               </div>
@@ -1001,7 +1080,7 @@ function BattleshipESL() {
         <div className="gameover-overlay">
           <div className="gameover-content">
             <div className="gameover-title">🏆 Game Over! 🏆</div>
-            <div className="winner-text">{winner===(isHost?1:2)?'You Win!':'You Lose!'}</div>
+            <div className="winner-text" style={{color:'#00d9ff',fontSize:'1.8rem',marginBottom:'25px'}}>{winner===(isHost?1:2)?'You Win!':'You Lose!'}</div>
             <button className="gameover-btn" onClick={()=>window.location.reload()}>Play Again</button>
           </div>
         </div>
