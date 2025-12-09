@@ -2612,7 +2612,7 @@
         if (!hostCode.trim() || !peerRef.current) return;
         log('Connecting to: ' + hostCode.substring(0, 8));
         setStatusMsg('Connecting...');
-        var conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), {
+        var conn = peerRef.current.connect(hostCode.trim(), { serialization: 'json',
           reliable: true
         });
         setupConnection(conn);
@@ -5292,7 +5292,7 @@ function BattleshipESL() {
     if (!hostCode.trim() || !peerRef.current) return;
     log('Connecting to: ' + hostCode.substring(0, 8));
     setStatusMsg('Connecting...');
-    var conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), {
+    var conn = peerRef.current.connect(hostCode.trim(), { serialization: 'json',
       reliable: true
     });
     setupConnection(conn);
@@ -8430,36 +8430,18 @@ ReactDOM.render(/*#__PURE__*/React.createElement(BattleshipESL, null), document.
     };
 
     const PEER_CONFIG = {
+      debug: 2,
       config: {
         iceServers: [
-          { urls: 'stun:stun.relay.metered.ca:80' },
-          { urls: 'stun:stun.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          },
-          {
-            urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          }
-        ],
-        iceCandidatePoolSize: 10
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
       },
-      debug: 1,
-      pingInterval: 5000,
-      timeout: 15000
+      expirationTurns: 3,
+      weapons: ['big', 'rain', 'nuclear'],
+      startAfterTurn: 3
     };
 
     const createEmptyGrid = () => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
@@ -9139,7 +9121,7 @@ ReactDOM.render(/*#__PURE__*/React.createElement(BattleshipESL, null), document.
         if (!hostCode.trim() || !peerRef.current) return;
         log('Connecting to: ' + hostCode.substring(0, 8));
         setStatusMsg('Connecting...');
-        const conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), { reliable: true });
+        const conn = peerRef.current.connect(hostCode.trim(), { serialization: 'json', reliable: true });
         setupConnection(conn);
       };
 
