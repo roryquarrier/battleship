@@ -2612,7 +2612,7 @@
         if (!hostCode.trim() || !peerRef.current) return;
         log('Connecting to: ' + hostCode.substring(0, 8));
         setStatusMsg('Connecting...');
-        var conn = peerRef.current.connect(hostCode.trim(), {
+        var conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), {
           reliable: true
         });
         setupConnection(conn);
@@ -5292,7 +5292,7 @@ function BattleshipESL() {
     if (!hostCode.trim() || !peerRef.current) return;
     log('Connecting to: ' + hostCode.substring(0, 8));
     setStatusMsg('Connecting...');
-    var conn = peerRef.current.connect(hostCode.trim(), {
+    var conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), {
       reliable: true
     });
     setupConnection(conn);
@@ -9139,7 +9139,7 @@ ReactDOM.render(/*#__PURE__*/React.createElement(BattleshipESL, null), document.
         if (!hostCode.trim() || !peerRef.current) return;
         log('Connecting to: ' + hostCode.substring(0, 8));
         setStatusMsg('Connecting...');
-        const conn = peerRef.current.connect(hostCode.trim(), { reliable: true });
+        const conn = peerRef.current.connect(hostCode.trim(, { serialization: 'json' }), { reliable: true });
         setupConnection(conn);
       };
 
