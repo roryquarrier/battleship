@@ -9,12 +9,12 @@
   <!-- Typography: DM Sans for body, Orbitron for display/tactical elements -->
   <link rel="preconnect" href="https://fonts.googleapis.com/">
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
-  <link href="./Battleship ESL - Naval Combat Grammar Challenge_files/css2" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <script src="./Battleship ESL - Naval Combat Grammar Challenge_files/react.production.min.js.download"></script>
-  <script src="./Battleship ESL - Naval Combat Grammar Challenge_files/react-dom.production.min.js.download"></script>
-  <script src="./Battleship ESL - Naval Combat Grammar Challenge_files/babel.min.js.download"></script>
-  <script src="./Battleship ESL - Naval Combat Grammar Challenge_files/peerjs.min.js.download"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -1597,34 +1597,16 @@
       startAfterTurn: 3 // Start checking after turn 3
     };
     var PEER_CONFIG = {
-      config: {
-        iceServers: [{
-          urls: 'stun:stun.relay.metered.ca:80'
-        }, {
-          urls: 'stun:stun.l.google.com:19302'
-        }, {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }, {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }, {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }, {
-          urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }],
-        iceCandidatePoolSize: 10
-      },
-      debug: 1,
-      pingInterval: 5000,
-      timeout: 15000
-    };
+  debug: 2,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+  }
+};
     var createEmptyGrid = function createEmptyGrid() {
       return Array(GRID_SIZE).fill(null).map(function () {
         return Array(GRID_SIZE).fill(null);
@@ -4295,33 +4277,15 @@ var AIRDROP_CONFIG = {
   startAfterTurn: 3 // Start checking after turn 3
 };
 var PEER_CONFIG = {
+  debug: 2,
   config: {
-    iceServers: [{
-      urls: 'stun:stun.relay.metered.ca:80'
-    }, {
-      urls: 'stun:stun.l.google.com:19302'
-    }, {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }, {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }, {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }, {
-      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }],
-    iceCandidatePoolSize: 10
-  },
-  debug: 1,
-  pingInterval: 5000,
-  timeout: 15000
+    iceServers: [
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+  }
 };
 var createEmptyGrid = function createEmptyGrid() {
   return Array(GRID_SIZE).fill(null).map(function () {
